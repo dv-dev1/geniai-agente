@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-fundo: #010f17;
+  --color-superficie: rgb(255 255 255 / 0.05);
+  --color-borda: rgb(255 255 255 / 0.1);
+  --color-texto: #d9d9d9;
+  --color-suave: rgb(163 191 255 / 0.62);
+  --color-azul: #0099ff;
+  --color-ciano: #00c0fa;
+  --color-quente: #ff7a59;
+  --color-morno: #f5c451;
+  --color-frio: #0daadf;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --radius-cartao: 18px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Gradientes tirados do site: botão "Agendar diagnóstico" e ícone do logo. */
+.botao-primario {
+  background: linear-gradient(96deg, #0069ab 0%, #07afb5 150%);
+  border-radius: 100px;
+  color: #fff;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.gradiente-marca {
+  background: linear-gradient(90deg, #0daadf, #08fbd0);
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.cartao {
+  background: var(--color-superficie);
+  border: 1px solid var(--color-borda);
+  border-radius: var(--radius-cartao);
 }
