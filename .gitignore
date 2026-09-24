@@ -10,3 +10,7 @@ __pycache__/
 node_modules/
 .next/
 .DS_Store
+# skills de agente que a CLI da Neon instala sozinha; não fazem parte do projeto
+.agents/
+.claude/skills/
+skills-lock.json
