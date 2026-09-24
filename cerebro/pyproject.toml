@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geniai-cerebro"
+version = "0.1.0"
+description = "Cérebro do agente de pré-vendas da GeniAI: LangGraph + gpt-4.1-mini"
+requires-python = ">=3.11"
+license = "MIT"
+dependencies = [
+    "fastapi>=0.141",
+    "langgraph>=1.2",
+    "langchain-openai>=1.6",
+    "pydantic>=2.13",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=9.1", "ruff>=0.16", "httpx>=0.28"]
+
+[tool.setuptools]
+packages = ["agente"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
