@@ -968,12 +968,12 @@ class Persona:
 
 
 PERSONAS = [
-    Persona("MEI curiosa", "frio", "Você é a Carla, manicure, MEI, trabalha sozinha. Viu um post sobre IA e ficou curiosa, mas não tem um problema específico, não tem pressa e não quer falar com especialista agora (\"vou pensar\")."),
-    Persona("Loja de roupas", "quente", "Você é o Marcos, dono de uma loja de roupas em João Pessoa (ME, 12 funcionários). O WhatsApp da loja vive lotado e clientes desistem porque a resposta demora. Quer resolver nos próximos 2 ou 3 meses, pode investir entre 10 e 25 mil e quer falar com um especialista."),
-    Persona("Gerente de logística", "morno", "Você é a Paula, gerente de operações de uma transportadora média (80 funcionários). A cobrança dos clientes é toda manual em planilha. Você não decide sozinha, depende da diretoria, não tem pressa e agora não quer marcar conversa: prefere pensar."),
+    Persona("MEI curiosa", "frio", "Você é a Carla, manicure, MEI, trabalha sozinha. Viu um post da GeniAI e ficou curiosa, mas não tem um problema específico, não tem pressa e não quer falar com especialista agora (\"vou pensar\")."),
+    Persona("Restaurante", "quente", "Você é o Marcos, dono de um restaurante em Recife (ME, 12 funcionários). Não sabe o que acontece na cozinha quando não está lá e quer acompanhar umas 8 horas por dia. Quer começar no mês que vem e quer falar com um especialista."),
+    Persona("Gerente de varejo", "morno", "Você é a Paula, gerente de marketing de uma rede de lojas média (80 funcionários). Hoje avisa os clientes das promoções um a um no WhatsApp. Não sabe quantos contatos tem na base, não decide sozinha, depende da diretoria, não tem pressa e agora não quer marcar conversa: prefere pensar."),
     Persona("Candidato a vaga", "frio", "Você é o Lucas, desenvolvedor, e quer saber se a GeniAI está contratando. Você não é cliente."),
-    Persona("Só quer preço", "quente", "Você é a Renata, sócia de uma clínica odontológica (EPP, 20 funcionários). Quer um chatbot para agendamento e insiste em saber quanto custa. Quando entender que o preço depende do diagnóstico, aceita falar com um especialista."),
-    Persona("Indústria decidida", "quente", "Você é o Roberto, diretor de uma indústria de alimentos (grande, 300 funcionários). ERP, CRM e planilhas não conversam e isso gera retrabalho todo dia. Quer começar este mês e pede logo uma reunião."),
+    Persona("Só quer preço", "quente", "Você é a Renata, sócia de uma clínica odontológica (EPP, 20 funcionários). Quer gravar o atendimento da recepção e insiste em saber quanto custa antes de qualquer coisa. Depois de saber o preço, aceita falar com um especialista."),
+    Persona("Distribuidora decidida", "quente", "Você é o Roberto, diretor de uma distribuidora de bebidas (grande, 300 funcionários). Tem uma base de uns 50 mil clientes e quer mandar avisos e promoções para todos pelo WhatsApp. Quer começar já e pede logo uma reunião."),
 ]
 
 
@@ -1538,7 +1538,8 @@ export type Deps = {
 }
 
 export const HORAS_PAUSA = 24
-export const FALHA = 'Tive um problema técnico aqui 😕 Um especialista da GeniAI vai continuar seu atendimento em breve.'
+export const FALHA =
+  'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
 
 export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'ignorar') return
@@ -2034,4 +2035,4 @@ curl -s -X PUT "$BASE/update-notify-sent-by-me" -H "Client-Token: $ZAPI_CLIENT_T
   - a **saída real** de `python -m agente.avaliar`
   - como rodar local: `uv sync --extra dev`, `vercel env pull`, `npm run dev`, `uv run --env-file .env python -m agente.chat`
   - a configuração da Z-API (os dois `curl` da Tarefa 9)
-  - o aviso de **validar com a GeniAI**, via `docs/perguntas-para-geniai.md`, os cases, o FAQ e o plano Hobby da Vercel antes de produção
+  - de onde vem o que a Gê diz (`docs/respostas-geniai.md`) e o que ainda falta confirmar com a GeniAI: periodicidade da cobrança do Audiobot, corte `BASE_RELEVANTE` e plano Hobby da Vercel antes de produção
