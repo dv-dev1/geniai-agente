@@ -19,7 +19,7 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
   const [c] = await sql()`select * from contatos where id = ${id}`
   if (!c) notFound()
   const mensagens =
-    await sql()`select autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`
+    await sql()`select id, autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`
   const lead = c.lead as Record<string, unknown>
   const telefone = /^\d+$/.test(c.phone) ? c.phone : (lead.telefone as string | null)
 
@@ -70,7 +70,7 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
         <h2 className="font-medium">Conversa</h2>
         {mensagens.map((m) => (
           <div
-            key={`${m.criado_em}-${m.autor}`}
+            key={m.id}
             className={`max-w-[85%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${
               m.autor === 'cliente' ? 'cartao' : 'ml-auto border border-ciano/30 bg-ciano/10'
             }`}
