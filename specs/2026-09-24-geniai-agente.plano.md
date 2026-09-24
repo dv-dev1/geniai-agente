@@ -890,7 +890,7 @@ Expected: FAIL — `ModuleNotFoundError: No module named 'main'`
 import os
 import secrets
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from agente.grafo import Turno, responder
@@ -906,12 +906,17 @@ class Pedido(BaseModel):
     telefone_conhecido: bool = True
 
 
-@app.post("/responder")
-def rota_responder(pedido: Pedido, authorization: str = Header(default="")) -> dict:
+def exigir_token(authorization: str = Header(default="")) -> None:
     token = os.environ.get("AGENTE_TOKEN", "")
     # Rota pública na Vercel: sem o token, qualquer um gastaria o crédito da OpenAI.
-    if not token or not secrets.compare_digest(authorization, f"Bearer {token}"):
+    # Em bytes porque compare_digest recusa str não-ASCII, e o header pode chegar em latin-1.
+    if not token or not secrets.compare_digest(authorization.encode(), f"Bearer {token}".encode()):
         raise HTTPException(status_code=401)
+
+
+# Como dependência, o token é checado antes da validação do corpo: sem token, 401 e não 422.
+@app.post("/responder", dependencies=[Depends(exigir_token)])
+def rota_responder(pedido: Pedido) -> dict:
     r = responder(pedido.historico, Lead.de_dict(pedido.lead), pedido.msgs_bot, pedido.telefone_conhecido)
     return {
         "mensagem": r["resposta"].mensagem,
