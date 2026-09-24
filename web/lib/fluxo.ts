@@ -1,0 +1,60 @@
+import type { consultarCerebro, Veredito } from './cerebro.ts'
+import type * as banco from './db.ts'
+import type { Evento } from './zapi.ts'
+
+export type Deps = {
+  db: Omit<typeof banco, 'sql'>
+  cerebro: typeof consultarCerebro
+  enviar: (phone: string, texto: string) => Promise<string>
+  esperar: (ms: number) => Promise<void>
+  debounceMs: number
+}
+
+export const HORAS_PAUSA = 24
+export const FALHA =
+  'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
+
+export async function receber(e: Evento, d: Deps): Promise<void> {
+  if (e.tipo === 'ignorar') return
+  const nova = await d.db.registrarMensagem({
+    id: e.id,
+    contato: e.contato,
+    phone: e.phone,
+    nome: e.tipo === 'cliente' ? e.nome : null,
+    autor: e.tipo,
+    texto: e.texto,
+  })
+  if (!nova) return
+  if (e.tipo === 'humano') return d.db.pausar(e.contato, HORAS_PAUSA)
+
+  await d.esperar(d.debounceMs)
+  // Chegou outra mensagem durante a espera: quem responde é a espera dela.
+  if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return
+  await atender(e.contato, d)
+}
+
+async function atender(contatoId: string, d: Deps): Promise<void> {
+  const c = await d.db.carregarContato(contatoId)
+  if (c.pausado) return
+  // Reivindicação atômica: se outra execução já pegou estas mensagens, esta desiste.
+  if ((await d.db.reivindicarPendentes(contatoId)) === 0) return
+
+  let v: Veredito | null = null
+  try {
+    v = await d.cerebro({
+      historico: await d.db.historico(contatoId),
+      lead: c.lead,
+      msgs_bot: c.msgsBot,
+      telefone_conhecido: !c.phone.endsWith('@lid'),
+    })
+  } catch (erro) {
+    console.error('cérebro falhou', contatoId, erro)
+  }
+
+  const texto = v?.mensagem ?? FALHA
+  // ponytail: se o send-text falhar, as mensagens já foram reivindicadas e ficam sem resposta; reenfileirar quando a Z-API falhar de verdade.
+  const id = await d.enviar(c.phone, texto)
+  await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto })
+  if (v) await d.db.salvarLead(contatoId, v.lead, v.score, v.temperatura, v.etapa)
+  if (v?.acao !== 'continuar') await d.db.pausar(contatoId, HORAS_PAUSA)
+}

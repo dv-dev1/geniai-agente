@@ -1476,6 +1476,29 @@ test('três mensagens seguidas geram uma resposta só', async () => {
   assert.deepEqual(f.pedidos[0].historico.map((t) => t.texto), ['oi', 'tudo bem?', 'quero automação'])
 })
 
+const passo = () => new Promise((r) => setTimeout(r, 0))
+
+// Sem a trava do debounce, o bot responderia no meio da rajada e a 3a mensagem geraria uma 2a resposta.
+test('espera o cliente parar de digitar: mensagens espaçadas dentro da janela geram uma resposta só', async () => {
+  const f = montar()
+  const esperas: (() => void)[] = []
+  f.d.esperar = () => new Promise<void>((r) => esperas.push(r))
+  const p1 = receber(cliente('1', 'oi'), f.d)
+  await passo()
+  const p2 = receber(cliente('2', 'tudo bem?'), f.d)
+  await passo()
+  esperas[0]()
+  await p1
+  const p3 = receber(cliente('3', 'quero automação'), f.d)
+  await passo()
+  esperas[1]()
+  await p2
+  esperas[2]()
+  await p3
+  assert.equal(f.enviadas.length, 1)
+  assert.deepEqual(f.pedidos[0].historico.map((t) => t.texto), ['oi', 'tudo bem?', 'quero automação'])
+})
+
 test('reentrega da mesma mensagem não responde de novo', async () => {
   const f = montar()
   await receber(cliente('1'), f.d)
@@ -1594,7 +1617,7 @@ async function atender(contatoId: string, d: Deps): Promise<void> {
 Run: `cd web && npm test && npm run lint && npx tsc --noEmit`
 Expected: PASS em tudo.
 
-- [ ] **Step 10: prova de vermelho** — remover `if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return`, rodar (deve falhar "três mensagens seguidas…"), desfazer.
+- [ ] **Step 10: prova de vermelho** — remover `if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return`, rodar (deve falhar "espera o cliente parar de digitar…"), desfazer.
 
 - [ ] **Step 11: rota** — `web/app/api/webhook/[secret]/route.ts`
 
