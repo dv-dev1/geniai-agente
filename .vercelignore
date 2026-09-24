@@ -1,0 +1,11 @@
+.env*
+!.env.example
+.superpowers/
+.agents/
+.claude/
+.playwright-cli/
+**/.pytest_cache
+**/.ruff_cache
+**/*.egg-info
+docs/
+specs/
