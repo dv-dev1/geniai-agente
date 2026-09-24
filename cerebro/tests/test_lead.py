@@ -73,3 +73,7 @@ def test_pedido_de_contato_nao_volta_atras():
 
 def test_de_dict_ignora_chave_desconhecida_do_banco():
     assert Lead.de_dict({"nome": "Ana", "orcamento": "ate_10k"}).nome == "Ana"
+
+
+def test_false_conhecido_de_pediu_contato_nao_vira_none():
+    assert mesclar(lead(pediu_contato=False), Lead.vazio()).pediu_contato is False

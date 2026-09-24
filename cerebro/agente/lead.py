@@ -44,7 +44,9 @@ def mesclar(atual: Lead, novo: Lead) -> Lead:
     # O modelo devolve None para o que não ouviu neste turno; None nunca apaga o que já se sabia.
     dados = atual.model_dump() | {k: v for k, v in novo.model_dump().items() if v is not None}
     dados["servicos"] = list(dict.fromkeys(atual.servicos + novo.servicos))
-    dados["pediu_contato"] = atual.pediu_contato or novo.pediu_contato
+    # Pedido de contato não volta atrás; um False já conhecido também não vira None.
+    if atual.pediu_contato or novo.pediu_contato:
+        dados["pediu_contato"] = True
     return Lead.model_validate(dados)
 
 
