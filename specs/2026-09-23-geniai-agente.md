@@ -2,7 +2,11 @@
 
 ## Intenção
 
-1. Quem chama a GeniAI no WhatsApp é recebido por um agente que faz a triagem (nome, empresa, segmento, porte MEI/ME/EPP/média/grande, colaboradores, dor principal), apresenta os serviços da GeniAI que resolvem aquela dor e leva o lead a falar com um especialista.
+1. Quem chama a GeniAI no WhatsApp é recebido pela **Gê**, a assistente virtual.
+   - Ela faz a triagem: nome, empresa, segmento, porte MEI/ME/EPP/média/grande, colaboradores, dor principal e qual produto interessa.
+   - Apresenta o produto que resolve aquela dor, com o preço real: **Audiobot** (gravação do ambiente com transcrição e relatórios) ou **Disparador** (disparo em massa pela API oficial do WhatsApp).
+   - Leva o lead a falar com um especialista.
+   - Fonte de tudo o que ela diz: `docs/respostas-geniai.md`. Sem emoji, sem cases, sem inventar.
 2. O agente gasta o mínimo de mensagens: responde uma vez só a várias mensagens seguidas do cliente, manda uma mensagem por turno e chega ao encaminhamento em até 7 mensagens. Desde 01/10/2026 a Meta cobra R$ 0,035 por mensagem na API oficial, que é a que a GeniAI usa em produção.
 3. Quando um atendente responde pelo celular, o bot sai da conversa por 24 h. Depois de encaminhar ou encerrar, também.
 4. Um dashboard protegido por senha, com a identidade visual da GeniAI (tema escuro do site, gradiente do logo, fonte Inter), mostra o funil, a temperatura dos leads (quente, morno, frio), as mensagens do bot por conversa e o custo equivalente na API oficial. Nele o time abre a ficha e a conversa de cada lead e marca o status comercial.

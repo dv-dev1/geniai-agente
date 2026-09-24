@@ -28,6 +28,7 @@
 - O cérebro exige `Authorization: Bearer <AGENTE_TOKEN>`. Sem token configurado, recusa tudo.
 - Comentário só para explicar por quê (regra do manual): nada de banner, nada de docstring que repita o nome.
 - Textos para o cliente em pt-BR. Identificadores em português, como nesta spec.
+- **O que a Gê diz vem de `docs/respostas-geniai.md`** (respostas da GeniAI de 24/09/2026). Produtos: **Audiobot** e **Disparador**, com os preços de lá. Os cases e números do site são fictícios e nunca aparecem. **Nenhum emoji** em texto para o cliente, nem nas mensagens fixas do código.
 - **Identidade visual** (tirada do site em 24/09/2026):
 
 | Token | Valor | Origem |
@@ -291,8 +292,14 @@ As credenciais da Z-API (`ZAPI_*`) entram na Tarefa 9.
 
 **Interfaces:**
 - Produces:
-  - `Servico`, `Etapa`, `Temperatura` (Literals)
-  - `class Lead(BaseModel)`: campos `nome, empresa, segmento: str | None`; `porte: Literal['MEI','ME','EPP','media','grande'] | None`; `colaboradores: int | None`; `dor: str | None`; `servicos: list[Servico]`; `orcamento: Literal['ate_10k','10k_25k','25k_50k','acima_50k','nao_sabe'] | None`; `urgencia: Literal['imediata','ate_3_meses','sem_pressa'] | None`; `decisor, pediu_contato, fora_do_perfil: bool | None`; `telefone: str | None`. Todos **sem default**, porque o structured output strict exige todos presentes.
+  - `Servico = Literal['audiobot', 'disparador']`, `Etapa`, `Temperatura` (Literals)
+  - `class Lead(BaseModel)`, todos os campos **sem default**, porque o structured output strict exige todos presentes:
+    - `nome, empresa, segmento, cidade: str | None`
+    - `porte: Literal['MEI','ME','EPP','media','grande'] | None`, `colaboradores: int | None`, `dor: str | None`
+    - `servicos: list[Servico]`
+    - `plano: Literal['inicial','padrao','premium'] | None` (Audiobot), `base_clientes: int | None` (Disparador, número de contatos)
+    - `urgencia: Literal['imediata','ate_3_meses','sem_pressa'] | None`
+    - `decisor, pediu_contato, fora_do_perfil: bool | None`, `telefone: str | None`
   - `Lead.vazio() -> Lead`, `Lead.de_dict(dados: dict) -> Lead` (completa o que faltar com vazio)
   - `mesclar(atual: Lead, novo: Lead) -> Lead`, `pontuar(lead: Lead) -> int`, `temperatura(score: int) -> Temperatura`, `etapa(lead: Lead) -> Etapa`
 
@@ -306,8 +313,8 @@ def lead(**campos) -> Lead:
     return Lead.de_dict(campos)
 
 
-def test_me_com_dor_servico_urgencia_e_decisor_e_quente():
-    l = lead(porte="ME", colaboradores=12, dor="atendimento lento", servicos=["assistente"],
+def test_restaurante_com_dor_produto_urgencia_e_decisor_e_quente():
+    l = lead(porte="ME", colaboradores=12, dor="não sabe o que acontece na cozinha", servicos=["audiobot"],
              urgencia="ate_3_meses", decisor=True)
     assert pontuar(l) == 70
     assert temperatura(70) == "quente"
@@ -318,21 +325,30 @@ def test_mei_sozinho_com_dor_vaga_e_frio():
     assert temperatura(25) == "frio"
 
 
-def test_media_sem_pressa_e_sem_decisor_fica_morna():
-    l = lead(porte="media", colaboradores=80, dor="cobrança manual", servicos=["automacao"],
+def test_media_sem_pressa_sem_decisor_e_sem_base_conhecida_fica_morna():
+    l = lead(porte="media", colaboradores=80, dor="avisa os clientes um a um", servicos=["disparador"],
              urgencia="sem_pressa", decisor=False)
-    assert pontuar(l) == 65
-    assert temperatura(65) == "morno"
+    assert pontuar(l) == 55
+    assert temperatura(55) == "morno"
+
+
+def test_plano_escolhido_conta_como_intencao_concreta():
+    assert pontuar(lead(servicos=["audiobot"], plano="padrao")) == 30
+
+
+def test_base_grande_de_contatos_conta_como_intencao_concreta():
+    assert pontuar(lead(servicos=["disparador"], base_clientes=5000)) == 30
+    assert pontuar(lead(servicos=["disparador"], base_clientes=100)) == 15
 
 
 def test_pedido_de_contato_vira_quente_mesmo_com_pouca_informacao():
     assert pontuar(lead(porte="MEI", pediu_contato=True)) == 70
 
 
-def test_score_nao_passa_de_100():
-    l = lead(porte="grande", colaboradores=300, dor="x", servicos=["integracao"], orcamento="acima_50k",
+def test_lead_completo_chega_a_95():
+    l = lead(porte="grande", colaboradores=300, dor="x", servicos=["audiobot"], plano="premium",
              urgencia="imediata", decisor=True)
-    assert pontuar(l) == 100
+    assert pontuar(l) == 95
 
 
 def test_fora_do_perfil_zera_e_vai_para_perdido():
@@ -345,8 +361,8 @@ def test_etapa_acompanha_o_que_ja_se_sabe():
     assert etapa(Lead.vazio()) == "novo"
     assert etapa(lead(nome="Ana")) == "triagem"
     assert etapa(lead(nome="Ana", dor="x")) == "apresentacao"
-    assert etapa(lead(dor="x", servicos=["automacao"])) == "interesse"
-    assert etapa(lead(servicos=["automacao"], pediu_contato=True)) == "encaminhado"
+    assert etapa(lead(dor="x", servicos=["audiobot"])) == "interesse"
+    assert etapa(lead(servicos=["audiobot"], pediu_contato=True)) == "encaminhado"
 
 
 def test_none_do_modelo_nao_apaga_campo_conhecido():
@@ -355,8 +371,8 @@ def test_none_do_modelo_nao_apaga_campo_conhecido():
 
 
 def test_servicos_acumulam_sem_repetir():
-    m = mesclar(lead(servicos=["automacao"]), lead(servicos=["automacao", "integracao"]))
-    assert m.servicos == ["automacao", "integracao"]
+    m = mesclar(lead(servicos=["audiobot"]), lead(servicos=["audiobot", "disparador"]))
+    assert m.servicos == ["audiobot", "disparador"]
 
 
 def test_pedido_de_contato_nao_volta_atras():
@@ -364,7 +380,7 @@ def test_pedido_de_contato_nao_volta_atras():
 
 
 def test_de_dict_ignora_chave_desconhecida_do_banco():
-    assert Lead.de_dict({"nome": "Ana", "campo_antigo": 1}).nome == "Ana"
+    assert Lead.de_dict({"nome": "Ana", "orcamento": "ate_10k"}).nome == "Ana"
 ```
 
 - [ ] **Step 2: rodar e ver falhar**
@@ -379,13 +395,14 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-Servico = Literal["automacao", "assistente", "agente", "integracao", "consultoria", "otimizacao"]
+Servico = Literal["audiobot", "disparador"]
 Etapa = Literal["novo", "triagem", "apresentacao", "interesse", "encaminhado", "perdido"]
 Temperatura = Literal["quente", "morno", "frio"]
 
-PONTOS_PORTE = {"MEI": 5, "ME": 15, "EPP": 20, "media": 25, "grande": 25}
-PONTOS_ORCAMENTO = {"ate_10k": 3, "10k_25k": 8, "25k_50k": 12, "acima_50k": 15, "nao_sabe": 0}
+PONTOS_PORTE = {"MEI": 5, "ME": 10, "EPP": 15, "media": 15, "grande": 15}
 PONTOS_URGENCIA = {"imediata": 15, "ate_3_meses": 10, "sem_pressa": 0}
+# ponytail: corte arbitrário para "base que justifica o Disparador"; calibrar com a GeniAI.
+BASE_RELEVANTE = 500
 
 
 class Lead(BaseModel):
@@ -393,11 +410,13 @@ class Lead(BaseModel):
     nome: str | None
     empresa: str | None
     segmento: str | None
+    cidade: str | None
     porte: Literal["MEI", "ME", "EPP", "media", "grande"] | None
     colaboradores: int | None
     dor: str | None
     servicos: list[Servico]
-    orcamento: Literal["ate_10k", "10k_25k", "25k_50k", "acima_50k", "nao_sabe"] | None
+    plano: Literal["inicial", "padrao", "premium"] | None
+    base_clientes: int | None
     urgencia: Literal["imediata", "ate_3_meses", "sem_pressa"] | None
     decisor: bool | None
     telefone: str | None
@@ -429,20 +448,20 @@ def pontuar(lead: Lead) -> int:
     if lead.porte:
         s += PONTOS_PORTE[lead.porte]
     if lead.colaboradores is not None:
-        s += 15 if lead.colaboradores >= 50 else 10 if lead.colaboradores >= 10 else 5
+        s += 10 if lead.colaboradores >= 10 else 5
     if lead.dor:
         s += 15
     if lead.servicos:
-        s += 10
-    if lead.orcamento:
-        s += PONTOS_ORCAMENTO[lead.orcamento]
+        s += 15
+    if lead.plano or (lead.base_clientes or 0) >= BASE_RELEVANTE:
+        s += 15
     if lead.urgencia:
         s += PONTOS_URGENCIA[lead.urgencia]
     if lead.decisor:
         s += 10
     if lead.pediu_contato:
         s = max(s, 70)
-    return min(s, 100)
+    return s
 
 
 def temperatura(score: int) -> Temperatura:
@@ -466,9 +485,9 @@ def etapa(lead: Lead) -> Etapa:
 - [ ] **Step 4: rodar e ver passar**; apagar `tests/test_sanidade.py`
 
 Run: `cd cerebro && uv run pytest && uv run ruff check .`
-Expected: 11 passed; ruff limpo.
+Expected: 13 passed; ruff limpo.
 
-- [ ] **Step 5: prova de vermelho** — trocar `>= 70` por `> 70` em `temperatura`, rodar (deve falhar em 2 testes), desfazer.
+- [ ] **Step 5: prova de vermelho** — trocar `>= 70` por `> 70` em `temperatura`, rodar (deve falhar "restaurante… é quente"), desfazer.
 
 - [ ] **Step 6: devolver ao pai para commit** — `feat(cerebro): lead com score, temperatura e etapa do funil`
 
@@ -477,7 +496,7 @@ Expected: 11 passed; ruff limpo.
 ### Task 3: base de conhecimento, prompt e grafo LangGraph (TDD com LLM falso)
 
 **Files:**
-- Create: `cerebro/kb/empresa.md`, `cerebro/kb/servicos.md`, `cerebro/kb/cases.md`, `cerebro/kb/faq.md`, `cerebro/agente/prompts.py`, `cerebro/agente/grafo.py`, `cerebro/agente/chat.py`
+- Create: `cerebro/kb/empresa.md`, `cerebro/kb/audiobot.md`, `cerebro/kb/disparador.md`, `cerebro/kb/faq.md`, `cerebro/agente/prompts.py`, `cerebro/agente/grafo.py`, `cerebro/agente/chat.py`
 - Test: `cerebro/tests/test_grafo.py`
 
 **Interfaces:**
@@ -489,68 +508,56 @@ Expected: 11 passed; ruff limpo.
   - `grafo.chamar_llm(mensagens: list[BaseMessage]) -> tuple[Resposta, dict[str, int]]`, o ponto de troca nos testes
   - `grafo.responder(historico: list[Turno], lead: Lead, msgs_bot: int, telefone_conhecido: bool) -> dict` com as chaves `resposta: Resposta`, `lead: Lead` (já mesclado), `score: int`, `temperatura`, `etapa`, `uso: {entrada, cache, saida}`
 
-- [ ] **Step 1: `cerebro/kb/empresa.md`**
+- [ ] **Step 1: `cerebro/kb/empresa.md`** (fonte de toda a base: `docs/respostas-geniai.md`)
 
 ```markdown
 # GeniAI
 
-GeniAI Soluções em Inteligência Artificial Ltda, consultoria de inteligência artificial de João Pessoa/PB (Av. Juarez Távora, 522, sala 714, Torre). Transforma processos em resultado financeiro com automações inteligentes.
+GeniAI Soluções em Inteligência Artificial Ltda, empresa de João Pessoa/PB. Atende o Brasil todo, de forma remota: não vai presencialmente até o cliente.
 
-Missão: transformar dados em resultados financeiros reais através de automações inteligentes, sendo parceira genuína do crescimento dos clientes.
+Produtos: Audiobot (o carro-chefe) e Disparador.
 
-Atende empresas de todos os portes, do pequeno negócio à grande empresa: varejo, logística, indústria, seguros, saúde, academias e serviços.
+Horário do time: o especialista responde das 8h às 17h.
 
-Valores: ganha-ganha real, ROI como norte, transparência total, melhoria contínua.
-
-Como trabalha:
-1. Diagnóstico: entende o processo e onde está o ganho.
-2. Desenvolvimento: protótipo e solução sob medida.
-3. Implementação: integra aos sistemas que a empresa já usa e acompanha os resultados.
-
-Contato: contato@geniai.online · (83) 9 3142-4124 · Instagram @geniaioficial · geniai.online
+Site: geniai.online · Instagram @geniaioficial
 Política de privacidade: https://www.geniai.online/legal/privacy-policy
 ```
 
-- [ ] **Step 2: `cerebro/kb/servicos.md`** (os ids batem com `Servico`)
+- [ ] **Step 2: `cerebro/kb/audiobot.md`**
 
 ```markdown
-# Serviços da GeniAI
+# Audiobot
 
-## Automação de processos (id: automacao)
-Elimina tarefas repetitivas: copiar dados entre sistemas, planilhas, relatórios, cobrança, confirmações e lembretes.
-Resolve quando: a equipe gasta horas por semana em tarefa manual que se repete.
+O carro-chefe da GeniAI. Aparelho (hardware) instalado no ambiente, que grava o áudio e gera transcrições e relatórios inteligentes. Vira uma fonte de dados sobre o que acontece na empresa.
 
-## Assistentes personalizados (id: assistente)
-Atendimento com IA no WhatsApp ou no site, com a voz da marca: tira dúvidas, agenda, qualifica clientes, 24 horas.
-Resolve quando: o atendimento demora, cliente desiste esperando resposta, o time responde sempre as mesmas perguntas.
+Para que serve:
+- gravar reuniões e ter a transcrição e o relatório depois;
+- acompanhar a rotina de um ambiente, como a cozinha de um restaurante ou a recepção de uma clínica;
+- dar visibilidade aos processos e ao fluxo de trabalho;
+- segurança no ambiente de trabalho e qualidade do atendimento, por exemplo perceber um atendimento mal conduzido.
 
-## Agentes avançados de IA (id: agente)
-Agentes que executam tarefas de ponta a ponta com autonomia: analisar documentos, operar sistemas, tomar decisões simples.
-Resolve quando: o processo tem várias etapas e decisões e depende de gente experiente para andar.
+Para quem: empresas de qualquer segmento e porte; não há um perfil único.
 
-## Integrações com IA (id: integracao)
-Conecta CRM, ERP, planilhas e APIs; lead scoring, roteamento inteligente, RPA.
-Resolve quando: os dados estão espalhados, os sistemas não conversam e há retrabalho de digitação.
+Planos:
+- Inicial: R$ 299, até 4 horas de transcrição por dia.
+- Padrão: R$ 399, até 8 horas de transcrição por dia.
+- Premium: R$ 799, 24 horas de transcrição por dia.
+A periodicidade da cobrança o especialista confirma.
 
-## Consultoria estratégica em IA (id: consultoria)
-Mapeia as oportunidades de IA da empresa e monta um roadmap com retorno esperado.
-Resolve quando: a empresa quer usar IA mas não sabe por onde começar.
-
-## Otimização contínua (id: otimizacao)
-Monitora e melhora automações e IAs já implantadas.
-Resolve quando: a empresa já tem automação ou IA e quer mais resultado dela.
-
-## Preço
-Sob medida. O especialista apresenta a proposta depois do diagnóstico, conforme o escopo.
+Entrega: cerca de uma semana, conforme o estoque. Em João Pessoa, a retirada é combinada com um vendedor. Fora de João Pessoa, o envio é pelos Correios.
 ```
 
-- [ ] **Step 3: `cerebro/kb/cases.md`** — só os cases com resultado da seção de cases do site. Os depoimentos com nome ficam de fora até a GeniAI confirmar (`docs/perguntas-para-geniai.md`, pergunta 8).
+- [ ] **Step 3: `cerebro/kb/disparador.md`**
 
 ```markdown
-# Cases
+# Disparador
 
-- Academia: atendimento inteligente com IA conversacional integrada aos sistemas da academia. Resultado: 2,4x mais interesse e 38% a mais de conversão.
-- Serviços de saúde e benefícios: automação de cobrança com comunicação em massa e atendimento centralizado. Resultado: 3x mais produtividade e 31% a mais de conversão.
+Disparo de mensagens em massa no WhatsApp pela API oficial do WhatsApp. Resolve o limite do WhatsApp comum, que não deixa enviar ou encaminhar para muitos contatos de uma vez.
+
+Para quem: empresas que têm uma base de clientes e querem falar com todos de uma vez.
+
+Valores: R$ 999 de implementação, uma vez, mais R$ 499 de mensalidade.
+Prazo de implementação: até um mês.
 ```
 
 - [ ] **Step 4: `cerebro/kb/faq.md`**
@@ -558,10 +565,11 @@ Sob medida. O especialista apresenta a proposta depois do diagnóstico, conforme
 ```markdown
 # Perguntas frequentes
 
-- Quanto custa? Depende do escopo. O especialista apresenta a proposta depois do diagnóstico.
-- Quanto tempo leva? Depende do escopo; o especialista estima no diagnóstico.
-- Atende empresa pequena ou MEI? Sim, a GeniAI atende empresas de todos os portes.
-- Quando o especialista responde? Em horário comercial, pelo WhatsApp ou telefone informado.
+- Quanto custa? Audiobot: planos de R$ 299, R$ 399 e R$ 799. Disparador: R$ 999 de implementação mais R$ 499 de mensalidade.
+- Atende minha cidade? A GeniAI atende o Brasil todo, remotamente. Fora de João Pessoa, o Audiobot vai pelos Correios.
+- Atende MEI ou empresa pequena? Sim, empresas de qualquer porte.
+- Quando o especialista responde? Das 8h às 17h.
+- Vocês têm cases ou clientes para mostrar? Isso o especialista mostra na conversa.
 ```
 
 - [ ] **Step 5: `cerebro/agente/prompts.py`**
@@ -574,8 +582,8 @@ MAX_MENSAGENS_BOT = 7
 _KB = "\n\n".join(p.read_text(encoding="utf-8") for p in sorted((Path(__file__).parent.parent / "kb").glob("*.md")))
 
 # Fixo e no começo da conversa para a OpenAI cachear o prefixo (input em cache custa 1/4).
-SISTEMA = f"""Você é a assistente virtual da GeniAI, consultoria de inteligência artificial, atendendo no WhatsApp.
-Seu trabalho: receber quem chega, entender a empresa e a dor dela, mostrar como a GeniAI resolve e levar a pessoa a falar com um especialista.
+SISTEMA = f"""Você é a Gê, assistente virtual da GeniAI, atendendo no WhatsApp.
+Seu trabalho: receber quem chega, entender a empresa e o que ela precisa, mostrar o produto da GeniAI que resolve e levar a pessoa a falar com um especialista.
 
 # Cada mensagem custa dinheiro
 Toda mensagem que você envia é cobrada. Por isso:
@@ -585,20 +593,22 @@ Toda mensagem que você envia é cobrada. Por isso:
 - Pergunte só o que falta. Nunca pergunte de novo o que já está nos dados do lead.
 
 # Roteiro
-1. Primeira mensagem: cumprimente, diga que é a assistente virtual da GeniAI, avise em uma linha que os dados da conversa são usados só para o atendimento (https://www.geniai.online/legal/privacy-policy) e pergunte o nome e a empresa ou segmento.
-2. Pergunte o porte e o tamanho da equipe numa pergunta só, com opções numeradas: 1) MEI 2) ME 3) EPP 4) Média 5) Grande, e quantas pessoas trabalham lá.
-3. Pergunte qual processo ou problema mais toma tempo ou dinheiro hoje.
-4. Apresente 1 ou 2 serviços da GeniAI que resolvem essa dor, em linguagem simples; cite um case só se ele estiver na base. Na mesma mensagem pergunte se a pessoa quer conversar com um especialista.
-5. Se quiser: pergunte na mesma mensagem o melhor horário, para quando pensa em resolver e se é quem decide. Com a resposta, confirme que um especialista vai chamar e use acao "encaminhar_humano".
+1. Primeira mensagem: cumprimente, diga que é a Gê, assistente virtual da GeniAI, avise em uma linha que os dados da conversa são usados só para o atendimento (https://www.geniai.online/legal/privacy-policy) e pergunte o nome e a empresa ou segmento.
+2. Numa pergunta só: o que a pessoa procura, com opções numeradas (1) Audiobot: grava o ambiente e gera transcrições e relatórios; 2) Disparador: mensagens em massa no WhatsApp; 3) Ainda não sei), o porte (MEI, ME, EPP, média ou grande) e quantas pessoas trabalham lá.
+3. Entenda a necessidade. No Audiobot: qual ambiente quer acompanhar (reunião, cozinha, atendimento...) e por quantas horas por dia. No Disparador: para que quer disparar e quantos contatos tem na base. Se a pessoa não sabe qual produto, pergunte qual problema quer resolver e indique o que resolve.
+4. Apresente o produto em linguagem simples, com o preço da base. No Audiobot, indique o plano pelas horas por dia. Na mesma mensagem pergunte se quer falar com um especialista.
+5. Se quiser: pergunte na mesma mensagem a cidade (para a entrega do Audiobot), para quando pensa em começar e se é quem decide. Com a resposta, avise que vai passar para um especialista, que responde das 8h às 17h, e use acao "encaminhar_humano".
 Se a pessoa já disse algo que pula etapas, pule junto.
 Se a pessoa não quiser falar com especialista agora, agradeça, deixe a porta aberta e use acao "encerrar".
 
 # Regras
-- Português do Brasil, tom cordial e direto, sem jargão. Formatação do WhatsApp: *negrito* com um asterisco. No máximo 1 emoji por mensagem.
-- Use só o que está na base de conhecimento abaixo. Não invente preço, prazo, case, número ou cliente. Sobre preço: é sob medida e o especialista apresenta a proposta depois do diagnóstico.
+- Português do Brasil, tom cordial e direto, sem jargão. Formatação do WhatsApp: *negrito* com um asterisco.
+- Nunca use emoji.
+- Use só o que está na base de conhecimento abaixo. Não invente preço, prazo, plano, funcionalidade, cliente, case ou número. O que não estiver na base: diga que o especialista confirma.
+- Nunca cite cases, clientes ou resultados.
 - Nunca prometa resultado.
 - Se a mensagem do cliente for "[áudio]", diga que por enquanto você só lê texto e peça para escrever.
-- Pediu humano, reunião, ligação ou proposta: pediu_contato = true e acao = "encaminhar_humano".
+- Pediu humano, atendente, reunião, ligação ou proposta, em qualquer momento: avise que vai passar para um especialista, pediu_contato = true e acao = "encaminhar_humano".
 - Fora do perfil (vaga de emprego, fornecedor oferecendo algo, spam, assunto sem relação com a GeniAI): responda com educação em uma mensagem, fora_do_perfil = true e acao = "encerrar".
 - Se telefone_conhecido for "não", peça um telefone para contato na mensagem de encaminhamento e preencha "telefone".
 - Mensagens marcadas com [atendente humano] foram escritas por alguém do time; não as contradiga.
@@ -606,8 +616,10 @@ Se a pessoa não quiser falar com especialista agora, agradeça, deixe a porta a
 # Dados do lead
 Em "lead", preencha só o que o cliente disse nesta conversa. O que não souber fica null; nunca adivinhe.
 - porte: MEI, ME, EPP, media ou grande. Se só disser o número de pessoas, deixe porte null.
-- servicos: ids dos serviços da base que você apresentou e pelos quais o cliente mostrou interesse.
-- orcamento e urgencia: só se o cliente disser.
+- servicos: "audiobot" e/ou "disparador", só os que o cliente mostrou interesse.
+- plano: "inicial", "padrao" ou "premium", só se o cliente escolher um plano do Audiobot.
+- base_clientes: número de contatos da base, só se o cliente disser.
+- cidade e urgencia: só se o cliente disser.
 - decisor: true se disser que é dono, sócio, diretor ou quem decide; false se disser que depende de outra pessoa.
 
 # Base de conhecimento
@@ -650,11 +662,17 @@ def test_prompt_leva_base_papeis_e_estado(monkeypatch):
     ]
     grafo.responder(historico, Lead.vazio(), 3, False)
     m = capturado["mensagens"]
-    assert "Serviços da GeniAI" in m[0].content
+    assert "# Audiobot" in m[0].content and "# Disparador" in m[0].content
     assert [x.type for x in m[1:4]] == ["human", "ai", "ai"]
     assert m[3].content == "[atendente humano] Aqui é o Pedro"
     assert "3 de no máximo 7" in m[-1].content
     assert "telefone_conhecido: não" in m[-1].content
+
+
+def test_base_ainda_cabe_inteira_no_prompt():
+    # ~14k tokens. Acima disso a base inteira passa a pesar: hora de trocar por um nó de busca (RAG) no grafo.
+    from agente.prompts import SISTEMA
+    assert len(SISTEMA) < 50_000
 ```
 
 - [ ] **Step 7: rodar e ver falhar**
