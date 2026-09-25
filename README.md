@@ -64,3 +64,7 @@ Tudo sai de [`docs/respostas-geniai.md`](docs/respostas-geniai.md), resumido em 
 - o plano da Vercel: o Hobby serve para demo, e uso comercial pede o Pro.
 
 Desenho e decisões em [`specs/`](specs/).
+
+## Autor
+
+Feito por [dv-dev1](https://github.com/dv-dev1) · [LinkedIn](https://www.linkedin.com/in/dv-dev/).

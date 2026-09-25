@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { Autoria } from '../autoria.tsx'
 import { sair } from '../login/acoes.ts'
 import { AoVivo } from './ao-vivo.tsx'
 import { Menu } from './menu.tsx'
@@ -25,6 +26,9 @@ export default function LayoutPainel({ children }: { children: React.ReactNode }
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
+      <footer className="mx-auto max-w-6xl px-4 pb-8 sm:px-6">
+        <Autoria />
+      </footer>
     </>
   )
 }
