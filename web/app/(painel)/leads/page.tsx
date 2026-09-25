@@ -1,9 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { sql } from '@/lib/db.ts'
 import { ETAPA, haQuanto, PRIORIDADE, PRODUTO, STATUS } from '@/lib/rotulos.ts'
 import { Cabecalho, Pontuacao, SeloEtapa, SeloPrioridade, SeloStatus } from '../ui.tsx'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Leads' }
 
 type Filtros = { temperatura?: string; etapa?: string; status?: string }
 
@@ -36,11 +38,11 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Fi
           <thead className="border-b border-borda text-xs uppercase tracking-widest text-suave">
             <tr>
               <th className="px-4 py-3 font-normal">Lead</th>
-              <th className="font-normal">Produto</th>
+              <th className="hidden font-normal md:table-cell">Produto</th>
               <th className="font-normal">Prioridade</th>
-              <th className="font-normal">Etapa</th>
+              <th className="hidden font-normal md:table-cell">Etapa</th>
               <th className="font-normal">Status</th>
-              <th className="pr-4 font-normal">Última atividade</th>
+              <th className="hidden pr-4 font-normal md:table-cell">Última atividade</th>
             </tr>
           </thead>
           <tbody>
@@ -59,20 +61,22 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Fi
                   </Link>
                   <div className="text-suave">{l.empresa ?? ''}</div>
                 </td>
-                <td>{(l.servicos as string[]).map((s) => PRODUTO[s] ?? s).join(', ') || '—'}</td>
+                <td className="hidden md:table-cell">
+                  {(l.servicos as string[]).map((s) => PRODUTO[s] ?? s).join(', ') || '—'}
+                </td>
                 <td>
                   <div className="flex flex-col items-start gap-1">
                     <SeloPrioridade temperatura={l.temperatura} />
                     <Pontuacao score={l.score} />
                   </div>
                 </td>
-                <td>
+                <td className="hidden md:table-cell">
                   <SeloEtapa etapa={l.etapa} />
                 </td>
                 <td>
                   <SeloStatus status={l.status_comercial} />
                 </td>
-                <td className="pr-4 text-suave">{haQuanto(l.atualizado_em)}</td>
+                <td className="hidden pr-4 text-suave md:table-cell">{haQuanto(l.atualizado_em)}</td>
               </tr>
             ))}
           </tbody>

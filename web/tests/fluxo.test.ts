@@ -106,9 +106,13 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
           encerradaEm: null,
         })
       },
-      async encerrar(id) {
+      async encerrar(id, encaminhado) {
         relogio.agora += 1
-        Object.assign(contatos.get(id) ?? {}, { encerradaEm: relogio.agora })
+        Object.assign(
+          contatos.get(id) ?? {},
+          { encerradaEm: relogio.agora },
+          encaminhado ? { etapa: 'encaminhado' } : {},
+        )
         relogio.agora += 1
       },
       async pausar(id) {
@@ -221,6 +225,46 @@ test('cérebro fora do ar manda mensagem de falha e encerra a sessão', async ()
   await receber(cliente('1'), f.d)
   assert.deepEqual(f.enviadas, [{ phone: '5583999990000', texto: FALHA }])
   assert.notEqual(f.contatos.get('C1')?.encerradaEm, null)
+})
+
+test('cérebro fora do ar conta como encaminhado: o cliente ouviu que um especialista segue', async () => {
+  const f = montar(new Error('cérebro 500'))
+  await receber(cliente('1'), f.d)
+  assert.equal(f.contatos.get('C1')?.etapa, 'encaminhado')
+  f.relogio.agora += 5 * MINUTO
+  await receber(cliente('2', 'oi?'), f.d)
+  assert.deepEqual(
+    f.enviadas.map((e) => e.texto),
+    [FALHA, AVISO_ENCAMINHADO],
+  )
+})
+
+test('encaminhar sem o modelo marcar pediu_contato ainda aparece como encaminhado', async () => {
+  const f = montar({ acao: 'encaminhar_humano', etapa: 'interesse' })
+  await receber(cliente('1'), f.d)
+  assert.equal(f.contatos.get('C1')?.etapa, 'encaminhado')
+})
+
+test('o que o cliente falou com o atendente durante a pausa não volta para o bot', async () => {
+  const f = montar()
+  await receber({ tipo: 'humano', id: 'H1', contato: 'C1', phone: '5583999990000', texto: 'Oi, aqui é o Pedro' }, f.d)
+  await receber(cliente('2', 'pergunta para o Pedro'), f.d)
+  Object.assign(f.contatos.get('C1') ?? {}, { pausado: false })
+  f.relogio.agora += 24 * 60 * MINUTO
+  await receber(cliente('3', 'oi de novo'), f.d)
+  assert.deepEqual(
+    f.pedidos[0].historico.map((t) => t.texto),
+    ['oi de novo'],
+  )
+})
+
+test('se o envio pela Z-API falhar, o lead que o cérebro qualificou fica salvo', async () => {
+  const f = montar({ lead: { nome: 'Ana' }, etapa: 'triagem' })
+  f.d.enviar = async () => {
+    throw new Error('z-api 500')
+  }
+  await assert.rejects(receber(cliente('1'), f.d))
+  assert.deepEqual(f.contatos.get('C1')?.lead, { nome: 'Ana' })
 })
 
 test('contato só com @lid avisa o cérebro que falta telefone', async () => {

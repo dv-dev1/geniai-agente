@@ -1,8 +1,10 @@
+import type { Metadata } from 'next'
 import { sql } from '@/lib/db.ts'
 import { funil, PRIORIDADE } from '@/lib/rotulos.ts'
 import { Cabecalho } from './ui.tsx'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Visão geral' }
 
 const PRECO_MENSAGEM_META = 0.035
 
@@ -56,8 +58,11 @@ export default async function VisaoGeral() {
             Leads que chegaram até cada etapa · % sobre a etapa anterior; a primeira é a base
           </p>
           {f.degraus.map((d, i) => (
-            <div key={d.rotulo} className="mb-2 grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 text-sm">
-              <span className="text-suave">{d.rotulo}</span>
+            <div
+              key={d.rotulo}
+              className="mb-2 grid grid-cols-[1fr_4.5rem] items-center gap-x-3 gap-y-1 text-sm sm:grid-cols-[10.5rem_1fr_4.5rem]"
+            >
+              <span className="col-span-2 text-suave sm:col-span-1">{d.rotulo}</span>
               <div className="flex h-7 justify-center">
                 <div
                   className="gradiente-marca crescer-x h-full rounded-md"
@@ -95,15 +100,22 @@ export default async function VisaoGeral() {
         <h2 className="mb-4 font-medium">Novos leads · 14 dias</h2>
         <div className="flex h-44 items-end gap-1 pt-8">
           {dias.map((d, i) => (
-            <div key={d.dia} className="group relative flex h-full flex-1 flex-col items-center justify-end gap-1">
-              <span className="pointer-events-none absolute -top-7 z-10 whitespace-nowrap rounded-md border border-borda bg-[#0b1d28] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <div
+              key={d.dia}
+              className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
+            >
+              <span
+                className={`pointer-events-none absolute -top-7 z-10 whitespace-nowrap ${i >= dias.length - 2 ? 'right-0' : ''} rounded-md border border-borda bg-[#0b1d28] px-2 py-0.5 text-xs text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100`}
+              >
                 {d.n} {d.n === 1 ? 'lead' : 'leads'} · {d.dia}
               </span>
               <div
                 className="gradiente-marca crescer w-full rounded-t transition-[filter] duration-150 group-hover:brightness-125"
                 style={{ height: d.n ? `${(d.n / maxDia) * 100}%` : '2px', animationDelay: `${i * 25}ms` }}
               />
-              <span className="text-[10px] text-suave transition-colors duration-150 group-hover:text-white">
+              <span
+                className={`text-[10px] text-suave transition-colors duration-150 group-hover:text-white ${i % 2 ? 'invisible sm:visible' : ''}`}
+              >
                 {d.dia}
               </span>
             </div>

@@ -37,7 +37,11 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
 
 async function atender(contatoId: string, d: Deps): Promise<void> {
   const c = await d.db.carregarContato(contatoId)
-  if (c.pausado) return
+  if (c.pausado) {
+    // O atendente já tratou estas mensagens; sem marcar, a próxima sessão do bot as leria de novo.
+    await d.db.reivindicarPendentes(contatoId)
+    return
+  }
   if (c.ociosa) await d.db.abrirSessao(contatoId)
   // Reivindicação atômica: se outra execução já pegou estas mensagens, esta desiste.
   if ((await d.db.reivindicarPendentes(contatoId)) === 0) return
@@ -55,12 +59,14 @@ async function atender(contatoId: string, d: Deps): Promise<void> {
     console.error('cérebro falhou', contatoId, erro)
   }
 
+  // Antes do envio: se a Z-API falhar, o que o cérebro qualificou não se perde.
+  if (v) await d.db.salvarLead(contatoId, v.lead, v.score, v.temperatura, v.etapa)
   const texto = v?.mensagem ?? FALHA
   // ponytail: se o send-text falhar, as mensagens já foram reivindicadas e ficam sem resposta; reenfileirar quando a Z-API falhar de verdade.
   const id = await d.enviar(c.phone, texto)
   await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto })
-  if (v) await d.db.salvarLead(contatoId, v.lead, v.score, v.temperatura, v.etapa)
-  if (v?.acao !== 'continuar') await d.db.encerrar(contatoId)
+  // A falha também promete um especialista; o painel precisa mostrar esse lead como encaminhado.
+  if (v?.acao !== 'continuar') await d.db.encerrar(contatoId, !v || v.acao === 'encaminhar_humano')
 }
 
 // Uma vez por sessão: o cliente sabe que foi ouvido; mais que isso só gastaria mensagem paga.

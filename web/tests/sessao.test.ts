@@ -55,6 +55,8 @@ test('depois do login só volta para caminho do próprio painel', () => {
   assert.equal(destinoSeguro('/leads?etapa=novo'), '/leads?etapa=novo')
   assert.equal(destinoSeguro('//evil.com'), '/')
   assert.equal(destinoSeguro('/\\evil.com'), '/')
+  assert.equal(destinoSeguro('/\t/evil.com'), '/')
+  assert.equal(destinoSeguro('/\n/evil.com'), '/')
   assert.equal(destinoSeguro('https://evil.com'), '/')
   assert.equal(destinoSeguro(null), '/')
 })

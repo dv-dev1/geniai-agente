@@ -29,16 +29,22 @@ export async function validarToken(token: string | undefined): Promise<boolean> 
 
 const hash = (s: string) => createHash('sha256').update(s).digest()
 
+// Tempo constante sobre os hashes (mesmo tamanho): o tempo de resposta não revela quanto do segredo acertou.
+export const mesmoValor = (a: string, b: string) => timingSafeEqual(hash(a), hash(b))
+
 export function credenciaisValidas(usuario: string, senha: string): boolean {
   const { DASHBOARD_USER, DASHBOARD_PASSWORD } = process.env
   if (!DASHBOARD_USER || !DASHBOARD_PASSWORD) return false
-  // Compara os hashes (mesmo tamanho) e sempre os dois: o tempo de resposta não revela qual campo errou.
-  const usuarioOk = timingSafeEqual(hash(usuario), hash(DASHBOARD_USER))
-  const senhaOk = timingSafeEqual(hash(senha), hash(DASHBOARD_PASSWORD))
+  const usuarioOk = mesmoValor(usuario, DASHBOARD_USER)
+  const senhaOk = mesmoValor(senha, DASHBOARD_PASSWORD)
   return usuarioOk && senhaOk
 }
 
-// "//site" e "/\site" o navegador trata como outro domínio: aceitar viraria redirecionamento aberto.
+const ORIGEM = 'http://painel.invalido'
+
+// Interpreta como o navegador interpreta: "//site", "/\\site" e "/<tab>/site" viram outro domínio.
 export function destinoSeguro(de: unknown): string {
-  return typeof de === 'string' && de.startsWith('/') && !de.startsWith('//') && !de.startsWith('/\\') ? de : '/'
+  if (typeof de !== 'string' || !de.startsWith('/')) return '/'
+  const url = new URL(de, ORIGEM)
+  return url.origin === ORIGEM ? url.pathname + url.search : '/'
 }

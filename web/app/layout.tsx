@@ -4,7 +4,7 @@ import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
-export const metadata: Metadata = { title: 'GeniAI · Leads' }
+export const metadata: Metadata = { title: { template: '%s · GeniAI', default: 'Painel · GeniAI' } }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

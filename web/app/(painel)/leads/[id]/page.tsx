@@ -1,19 +1,24 @@
+import type { Metadata } from 'next'
 import { revalidatePath } from 'next/cache'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Fragment } from 'react'
-import { linkWhatsApp, mensagemDoEspecialista } from '@/lib/abordagem.ts'
+import { formatarTelefone, linkWhatsApp, mensagemDoEspecialista, trechos } from '@/lib/abordagem.ts'
 import { MINUTOS_SESSAO, sql } from '@/lib/db.ts'
+import { exigirSessao } from '@/lib/guarda.ts'
 import { PLANO, PORTE, PRODUTO, STATUS, URGENCIA } from '@/lib/rotulos.ts'
 import { type Lead, STATUS_COMERCIAL } from '@/lib/tipos.ts'
 import { Pontuacao, Selo, SeloEtapa, SeloPrioridade } from '../../ui.tsx'
 
 export const dynamic = 'force-dynamic'
+export const metadata: Metadata = { title: 'Lead' }
 
 const novaSessao = (antes: string, depois: string) =>
   new Date(depois).getTime() - new Date(antes).getTime() > MINUTOS_SESSAO * 60_000
 
 async function mudarStatus(form: FormData) {
   'use server'
+  await exigirSessao()
   const id = String(form.get('id'))
   const status = String(form.get('status'))
   if (!(STATUS_COMERCIAL as readonly string[]).includes(status)) throw new Error(`status inválido: ${status}`)
@@ -60,10 +65,11 @@ function informacoes(lead: Lead): [grupo: string, campos: Campo[]][] {
 
 export default async function FichaLead({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id)
-  const [c] = await sql()`select * from contatos where id = ${id}`
+  const [[c], mensagens] = await Promise.all([
+    sql()`select phone, nome_whatsapp, lead, score, temperatura, etapa, status_comercial from contatos where id = ${id}`,
+    sql()`select id, autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`,
+  ])
   if (!c) notFound()
-  const mensagens =
-    await sql()`select id, autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`
   const lead = c.lead as Lead
   const telefone = /^\d+$/.test(c.phone) ? c.phone : (lead.telefone as string | null)
   const grupos = informacoes(lead)
@@ -73,6 +79,9 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
   return (
     <div className="grid gap-6 md:grid-cols-[1fr_1.4fr]">
       <div className="space-y-4">
+        <Link href="/leads" className="inline-block text-sm text-suave transition-colors duration-150 hover:text-white">
+          ← Leads
+        </Link>
         <section className="cartao surgir space-y-4 p-5">
           <div className="space-y-3">
             <h1 className="titulo-gradiente text-3xl font-medium tracking-[-0.05em]">
@@ -87,8 +96,13 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <Pontuacao score={c.score} />
               {telefone && (
-                <a className="text-ciano hover:underline" href={`https://wa.me/${telefone.replace(/\D/g, '')}`}>
-                  {telefone}
+                <a
+                  className="text-ciano hover:underline"
+                  href={linkWhatsApp(telefone, '')}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {formatarTelefone(telefone)}
                 </a>
               )}
             </div>
@@ -180,7 +194,17 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
               }`}
             >
               <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">{m.autor}</div>
-              {m.texto}
+              {trechos(m.texto).map(([t, negrito], j) =>
+                negrito ? (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: trechos de um texto fixo, a ordem nunca muda
+                  <strong key={j} className="font-semibold text-white">
+                    {t}
+                  </strong>
+                ) : (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: idem
+                  <Fragment key={j}>{t}</Fragment>
+                ),
+              )}
             </div>
           </Fragment>
         ))}

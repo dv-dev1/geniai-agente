@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import { destinoSeguro } from '@/lib/sessao.ts'
 import { Formulario } from './formulario.tsx'
+
+export const metadata: Metadata = { title: 'Entrar' }
 
 export default async function Login({ searchParams }: { searchParams: Promise<{ de?: string }> }) {
   const { de } = await searchParams

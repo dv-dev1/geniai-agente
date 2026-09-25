@@ -97,6 +97,7 @@ export async function abrirSessao(id: string): Promise<void> {
       where contato_id = ${id} and autor = 'cliente' and not respondida), now()) where id = ${id}`
 }
 
-export async function encerrar(id: string): Promise<void> {
-  await sql()`update contatos set encerrada_em = now() where id = ${id}`
+export async function encerrar(id: string, encaminhado: boolean): Promise<void> {
+  await sql()`update contatos set encerrada_em = now(),
+    etapa = case when ${encaminhado} then 'encaminhado' else etapa end where id = ${id}`
 }
