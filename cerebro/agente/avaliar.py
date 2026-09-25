@@ -33,7 +33,8 @@ PERSONAS = [
 
 def despedida(fala: str) -> bool:
     # Depois do encaminhamento o bot pausa: uma pergunta ali fica sem resposta.
-    return "especialista" in fala.lower() and "?" not in fala
+    f = fala.lower()
+    return "especialista" in f and "?" not in f and "até já" not in f and "instante" not in f
 
 
 def fala_do_cliente(p: Persona, historico: list[Turno]) -> str:
