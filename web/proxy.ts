@@ -13,4 +13,4 @@ export async function proxy(req: NextRequest) {
   return NextResponse.redirect(login)
 }
 
-export const config = { matcher: ['/((?!api/webhook|_next/static|_next/image|favicon.ico|geniai-icone.png).*)'] }
+export const config = { matcher: ['/((?!api/webhook|_next/static|_next/image|icon.png|geniai-icone.png).*)'] }
