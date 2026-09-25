@@ -49,9 +49,10 @@ export default async function VisaoGeral() {
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Cartao rotulo="Leads" valor={t.leads} />
         <Cartao rotulo="Prioridade alta" valor={t.quente} destaque />
-        <Cartao rotulo="Msgs do bot por conversa" valor={msgsPorConversa} />
+        <Cartao rotulo="Mensagens da Gê por conversa" valor={msgsPorConversa} />
         <Cartao rotulo={`Custo de IA por conversa · ${dolar(m.ia_mes)} no mês`} valor={iaPorConversa} />
         <Cartao
+          largo
           rotulo={`Custo simulado na API oficial (mês) · ${m.empresa_mes} msgs × R$ 0,035`}
           valor={custoMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         />
@@ -136,10 +137,23 @@ export default async function VisaoGeral() {
 const dolar = (v: number, casas = 2) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: casas })
 
-function Cartao({ rotulo, valor, destaque }: { rotulo: string; valor: string | number; destaque?: boolean }) {
+// largo: o quinto cartão ocupa a linha inteira no celular, em vez de ficar sozinho numa coluna.
+function Cartao({
+  rotulo,
+  valor,
+  destaque,
+  largo,
+}: {
+  rotulo: string
+  valor: string | number
+  destaque?: boolean
+  largo?: boolean
+}) {
   return (
-    <div className={`cartao surgir p-4 ${destaque ? 'border-quente/40' : ''}`}>
-      <div className={`text-3xl font-normal tracking-[-0.05em] ${destaque ? 'text-quente' : 'text-white'}`}>
+    <div
+      className={`cartao surgir p-4 ${destaque ? 'border-quente/40' : ''} ${largo ? 'col-span-2 sm:col-span-1' : ''}`}
+    >
+      <div className={`text-2xl font-normal tracking-[-0.05em] lg:text-3xl ${destaque ? 'text-quente' : 'text-white'}`}>
         {valor}
       </div>
       <div className="mt-1 text-sm text-suave">{rotulo}</div>

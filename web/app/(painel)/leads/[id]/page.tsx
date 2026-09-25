@@ -7,7 +7,7 @@ import { formatarTelefone, linkWhatsApp, mensagemDoEspecialista, trechos } from 
 import { MINUTOS_SESSAO } from '@/lib/db.ts'
 import { PREFIXO_AUDIO } from '@/lib/fluxo.ts'
 import { bancoDoPainel } from '@/lib/guarda.ts'
-import { PLANO, PORTE, PRODUTO, STATUS, URGENCIA } from '@/lib/rotulos.ts'
+import { AUTOR, PLANO, PORTE, PRODUTO, STATUS, URGENCIA } from '@/lib/rotulos.ts'
 import { type Lead, STATUS_COMERCIAL } from '@/lib/tipos.ts'
 import { Pontuacao, Selo, SeloEtapa, SeloPrioridade } from '../../ui.tsx'
 
@@ -196,7 +196,7 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
               }`}
             >
               <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">
-                {m.autor}
+                {AUTOR[m.autor]}
                 {m.texto.startsWith(PREFIXO_AUDIO) && <span className="text-ciano"> · áudio transcrito</span>}
               </div>
               {trechos(m.texto.startsWith(PREFIXO_AUDIO) ? m.texto.slice(PREFIXO_AUDIO.length) : m.texto).map(

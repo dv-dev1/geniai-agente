@@ -10,6 +10,7 @@ export const ETAPA: Record<string, string> = {
   encaminhado: 'Com especialista',
   perdido: 'Fora do perfil',
 }
+export const AUTOR: Record<string, string> = { cliente: 'Cliente', bot: 'Gê', humano: 'Especialista' }
 export const STATUS: Record<string, string> = {
   a_contatar: 'A contatar',
   contatado: 'Em contato',
