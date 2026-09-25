@@ -69,7 +69,9 @@ export async function salvarTranscricao(id: string, texto: string, custo_usd: nu
 }
 
 export async function transcrevendo(contato: string): Promise<boolean> {
-  const r = await sql()`select 1 from mensagens where contato_id = ${contato} and texto = ${TRANSCREVENDO} limit 1`
+  // Só o último minuto: se a gravação da transcrição falhar, a marca que ficou não trava o contato para sempre.
+  const r = await sql()`select 1 from mensagens where contato_id = ${contato} and texto = ${TRANSCREVENDO}
+    and criado_em > now() - interval '1 minute' limit 1`
   return r.length > 0
 }
 

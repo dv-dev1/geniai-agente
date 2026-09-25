@@ -114,7 +114,13 @@ def agente(e: Estado) -> Estado:
     if e.get("problemas"):
         correcao = " ".join(e["problemas"])
         mensagens += [AIMessage(e["resposta"].mensagem), SystemMessage(f"Reescreva a mensagem. {correcao}")]
-    resposta, uso = chamar_llm(mensagens)
+    try:
+        resposta, uso = chamar_llm(mensagens)
+    except Exception:
+        if not e.get("problemas"):
+            raise
+        # A reescrita falhou: fica a primeira resposta, e o conferir põe a fala segura no lugar dela.
+        resposta, uso = e["resposta"], dict.fromkeys(e["uso"], 0)
     anterior = e.get("uso", {})
     return {
         "resposta": resposta,

@@ -36,7 +36,8 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
   d.acordar()
   // A mensagem já está gravada: transcrever junto com a espera não muda a ordem da conversa.
   await Promise.all([e.audio && ouvir(e.id, e.audio, d), d.esperar(d.debounceMs)])
-  // Chegou outra mensagem durante a espera: quem responde é a espera dela.
+  await esperarTranscricoes(e.contato, d)
+  // Chegou outra mensagem durante as esperas: quem responde é a espera dela.
   if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return
   await atender(e.contato, d)
 }
@@ -56,7 +57,6 @@ async function esperarTranscricoes(contatoId: string, d: Deps): Promise<void> {
 }
 
 async function atender(contatoId: string, d: Deps): Promise<void> {
-  await esperarTranscricoes(contatoId, d)
   const c = await d.db.carregarContato(contatoId)
   if (c.pausado) {
     // O atendente já tratou estas mensagens; sem marcar, a próxima sessão do bot as leria de novo.

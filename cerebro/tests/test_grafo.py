@@ -124,3 +124,18 @@ def test_mensagem_longa_e_encurtada_e_depois_de_duas_tentativas_passa_como_esta(
 def test_custo_desconta_o_cache_da_entrada():
     uso = {"entrada": 1_000_000, "cache": 500_000, "saida": 1_000_000}
     assert grafo.custo_usd(uso) == 0.5 * 0.40 + 0.5 * 0.10 + 1.60
+
+
+def test_reescrita_que_falha_fica_com_a_fala_segura(monkeypatch):
+    chamadas = []
+
+    def chamar(mensagens):
+        chamadas.append(mensagens)
+        if len(chamadas) > 1:
+            raise RuntimeError("sem resposta estruturada")
+        return grafo.Resposta(mensagem="Sai por R$ 199.", lead=Lead.vazio(), acao="continuar"), USO
+    monkeypatch.setattr(grafo, "chamar_llm", chamar)
+    r = grafo.responder([{"autor": "cliente", "texto": "quanto custa?"}], Lead.vazio(), 2, True)
+    assert len(chamadas) == 2
+    assert r["resposta"].mensagem == grafo.FALA_SEGURA["continuar"]
+    assert r["uso"] == USO
