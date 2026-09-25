@@ -1,7 +1,5 @@
+import { PLANO, PRODUTO } from './rotulos.ts'
 import type { Lead } from './tipos.ts'
-
-const PRODUTO: Record<string, string> = { audiobot: 'Audiobot', disparador: 'Disparador' }
-const PLANO: Record<string, string> = { inicial: 'Inicial', padrao: 'Padrão', premium: 'Premium' }
 
 export function mensagemDoEspecialista(lead: Lead, nomeWhatsapp: string | null): string {
   const nome = (lead.nome as string | null) ?? nomeWhatsapp

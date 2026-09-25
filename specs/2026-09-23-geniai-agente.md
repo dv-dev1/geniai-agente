@@ -9,7 +9,7 @@
    - Fonte de tudo o que ela diz: `docs/respostas-geniai.md`. Sem emoji, sem cases, sem inventar.
 2. O agente gasta o mínimo de mensagens: responde uma vez só a várias mensagens seguidas do cliente, manda uma mensagem por turno e chega ao encaminhamento em até 7 mensagens. Desde 01/10/2026 a Meta cobra R$ 0,035 por mensagem na API oficial, que é a que a GeniAI usa em produção.
 3. Quando um atendente responde pelo celular, o bot sai da conversa por 24 h. Depois de encaminhar ou encerrar, também.
-4. Um dashboard protegido por senha, com a identidade visual da GeniAI (tema escuro do site, gradiente do logo, fonte Inter), mostra o funil, a temperatura dos leads (quente, morno, frio), as mensagens do bot por conversa e o custo equivalente na API oficial. Nele o time abre a ficha e a conversa de cada lead e marca o status comercial.
+4. Um dashboard protegido por senha, com a identidade visual da GeniAI (tema escuro do site, gradiente do logo, fonte Inter), mostra o funil, a prioridade dos leads (alta, média, baixa, pela pontuação de 0 a 100), as mensagens do bot por conversa e o custo equivalente na API oficial. Nele o time abre a ficha e a conversa de cada lead e marca o status comercial.
 
 ## Critério de aceite
 
