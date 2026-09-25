@@ -7,9 +7,9 @@ import { COOKIE_SESSAO, credenciaisValidas, criarToken, DURACAO_SESSAO_S, destin
 export type Tentativa = { erro: string; usuario: string } | null
 
 export async function entrar(_: Tentativa, form: FormData): Promise<Tentativa> {
-  const usuario = String(form.get('usuario') ?? '')
-  if (!credenciaisValidas(usuario, String(form.get('senha') ?? '')))
-    return { erro: 'Usuário ou senha incorretos.', usuario }
+  const digitado = String(form.get('usuario') ?? '')
+  const usuario = credenciaisValidas(digitado, String(form.get('senha') ?? ''))
+  if (!usuario) return { erro: 'Usuário ou senha incorretos.', usuario: digitado }
   ;(await cookies()).set(COOKIE_SESSAO, await criarToken(usuario), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

@@ -4,8 +4,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Fragment } from 'react'
 import { formatarTelefone, linkWhatsApp, mensagemDoEspecialista, trechos } from '@/lib/abordagem.ts'
-import { MINUTOS_SESSAO, sql } from '@/lib/db.ts'
-import { exigirSessao } from '@/lib/guarda.ts'
+import { MINUTOS_SESSAO } from '@/lib/db.ts'
+import { bancoDoPainel } from '@/lib/guarda.ts'
 import { PLANO, PORTE, PRODUTO, STATUS, URGENCIA } from '@/lib/rotulos.ts'
 import { type Lead, STATUS_COMERCIAL } from '@/lib/tipos.ts'
 import { Pontuacao, Selo, SeloEtapa, SeloPrioridade } from '../../ui.tsx'
@@ -18,11 +18,11 @@ const novaSessao = (antes: string, depois: string) =>
 
 async function mudarStatus(form: FormData) {
   'use server'
-  await exigirSessao()
+  const db = await bancoDoPainel()
   const id = String(form.get('id'))
   const status = String(form.get('status'))
   if (!(STATUS_COMERCIAL as readonly string[]).includes(status)) throw new Error(`status inválido: ${status}`)
-  await sql()`update contatos set status_comercial = ${status} where id = ${id}`
+  await db`update contatos set status_comercial = ${status} where id = ${id}`
   revalidatePath(`/leads/${encodeURIComponent(id)}`)
 }
 
@@ -65,9 +65,10 @@ function informacoes(lead: Lead): [grupo: string, campos: Campo[]][] {
 
 export default async function FichaLead({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeURIComponent((await params).id)
+  const db = await bancoDoPainel()
   const [[c], mensagens] = await Promise.all([
-    sql()`select phone, nome_whatsapp, lead, score, temperatura, etapa, status_comercial from contatos where id = ${id}`,
-    sql()`select id, autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`,
+    db`select phone, nome_whatsapp, lead, score, temperatura, etapa, status_comercial from contatos where id = ${id}`,
+    db`select id, autor, texto, criado_em from mensagens where contato_id = ${id} order by criado_em`,
   ])
   if (!c) notFound()
   const lead = c.lead as Lead

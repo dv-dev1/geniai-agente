@@ -16,14 +16,14 @@ export function criarToken(usuario: string): Promise<string> {
     .sign(chave())
 }
 
-export async function validarToken(token: string | undefined): Promise<boolean> {
-  if (!token || !process.env.AUTH_SECRET) return false
+export async function validarToken(token: string | undefined): Promise<string | null> {
+  if (!token || !process.env.AUTH_SECRET) return null
   try {
     // Algoritmo fixo: o token não escolhe como vai ser verificado.
-    await jwtVerify(token, chave(), { algorithms: ['HS256'] })
-    return true
+    const { payload } = await jwtVerify(token, chave(), { algorithms: ['HS256'] })
+    return payload.sub ?? null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -32,12 +32,19 @@ const hash = (s: string) => createHash('sha256').update(s).digest()
 // Tempo constante sobre os hashes (mesmo tamanho): o tempo de resposta não revela quanto do segredo acertou.
 export const mesmoValor = (a: string, b: string) => timingSafeEqual(hash(a), hash(b))
 
-export function credenciaisValidas(usuario: string, senha: string): boolean {
-  const { DASHBOARD_USER, DASHBOARD_PASSWORD } = process.env
-  if (!DASHBOARD_USER || !DASHBOARD_PASSWORD) return false
-  const usuarioOk = mesmoValor(usuario, DASHBOARD_USER)
-  const senhaOk = mesmoValor(senha, DASHBOARD_PASSWORD)
-  return usuarioOk && senhaOk
+export function credenciaisValidas(usuario: string, senha: string): string | null {
+  const { DASHBOARD_USER, DASHBOARD_PASSWORD, DEMO_USER, DEMO_PASSWORD } = process.env
+  const pares = [
+    [DASHBOARD_USER, DASHBOARD_PASSWORD],
+    [DEMO_USER, DEMO_PASSWORD],
+  ]
+  for (const [u, s] of pares) {
+    if (!u || !s) continue
+    const usuarioOk = mesmoValor(usuario, u)
+    const senhaOk = mesmoValor(senha, s)
+    if (usuarioOk && senhaOk) return u
+  }
+  return null
 }
 
 const ORIGEM = 'http://painel.invalido'

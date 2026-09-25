@@ -6,6 +6,8 @@ import { credenciaisValidas, criarToken, destinoSeguro, validarToken } from '../
 process.env.AUTH_SECRET = 'segredo-de-teste-com-tamanho-suficiente'
 process.env.DASHBOARD_USER = 'geniai'
 process.env.DASHBOARD_PASSWORD = 'senha-certa'
+process.env.DEMO_USER = 'demo'
+process.env.DEMO_PASSWORD = 'facil'
 
 const assinar = (segredo: string, exp: string | number) =>
   new SignJWT()
@@ -15,7 +17,7 @@ const assinar = (segredo: string, exp: string | number) =>
     .sign(new TextEncoder().encode(segredo))
 
 test('token criado no login abre o painel', async () => {
-  assert.equal(await validarToken(await criarToken('geniai')), true)
+  assert.equal(await validarToken(await criarToken('geniai')), 'geniai')
 })
 
 test('token adulterado, de outro segredo, vencido ou sem assinatura não abre', async () => {
@@ -23,14 +25,14 @@ test('token adulterado, de outro segredo, vencido ou sem assinatura não abre', 
   const [cabecalho, corpo, assinatura] = bom.split('.')
   const outroCorpo = Buffer.from(JSON.stringify({ sub: 'admin', exp: 9999999999 })).toString('base64url')
   const semAssinatura = `${Buffer.from('{"alg":"none"}').toString('base64url')}.${corpo}.`
-  assert.equal(await validarToken(`${cabecalho}.${outroCorpo}.${assinatura}`), false)
-  assert.equal(await validarToken(await assinar('outro-segredo-qualquer-bem-comprido', '7d')), false)
+  assert.equal(await validarToken(`${cabecalho}.${outroCorpo}.${assinatura}`), null)
+  assert.equal(await validarToken(await assinar('outro-segredo-qualquer-bem-comprido', '7d')), null)
   assert.equal(
     await validarToken(await assinar(process.env.AUTH_SECRET as string, Math.floor(Date.now() / 1000) - 60)),
-    false,
+    null,
   )
-  assert.equal(await validarToken(semAssinatura), false)
-  assert.equal(await validarToken(undefined), false)
+  assert.equal(await validarToken(semAssinatura), null)
+  assert.equal(await validarToken(undefined), null)
 })
 
 test('sem AUTH_SECRET configurado, nada abre', async () => {
@@ -38,17 +40,20 @@ test('sem AUTH_SECRET configurado, nada abre', async () => {
   const segredo = process.env.AUTH_SECRET
   delete process.env.AUTH_SECRET
   try {
-    assert.equal(await validarToken(token), false)
+    assert.equal(await validarToken(token), null)
   } finally {
     process.env.AUTH_SECRET = segredo
   }
 })
 
-test('credenciais: só o par exato do ambiente passa', () => {
-  assert.equal(credenciaisValidas('geniai', 'senha-certa'), true)
-  assert.equal(credenciaisValidas('geniai', 'senha-errada'), false)
-  assert.equal(credenciaisValidas('outro', 'senha-certa'), false)
-  assert.equal(credenciaisValidas('geniai', ''), false)
+test('credenciais: cada par do ambiente abre o próprio usuário, e só ele', () => {
+  assert.equal(credenciaisValidas('geniai', 'senha-certa'), 'geniai')
+  assert.equal(credenciaisValidas('geniai', 'senha-errada'), null)
+  assert.equal(credenciaisValidas('outro', 'senha-certa'), null)
+  assert.equal(credenciaisValidas('geniai', ''), null)
+  assert.equal(credenciaisValidas('demo', 'facil'), 'demo')
+  assert.equal(credenciaisValidas('geniai', 'facil'), null)
+  assert.equal(credenciaisValidas('demo', 'senha-certa'), null)
 })
 
 test('depois do login só volta para caminho do próprio painel', () => {

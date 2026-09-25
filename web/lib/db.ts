@@ -27,6 +27,14 @@ let conexao: NeonQueryFunction<false, false> | undefined
 // Preguiçoso: o next build importa este módulo sem DATABASE_URL.
 export const sql = () => (conexao ??= neon(process.env.DATABASE_URL ?? ''))
 
+let conexaoDemo: NeonQueryFunction<false, false> | undefined
+export function sqlDemo() {
+  // Sem banco demo configurado, falha: cair no DATABASE_URL mostraria os leads reais ao usuário de apresentação.
+  if (!process.env.DEMO_DATABASE_URL) throw new Error('DEMO_DATABASE_URL não configurado')
+  conexaoDemo ??= neon(process.env.DEMO_DATABASE_URL)
+  return conexaoDemo
+}
+
 export async function registrarMensagem(m: NovaMensagem): Promise<boolean> {
   // Um @lid que chega depois não apaga o telefone real que a equipe precisa para ligar.
   await sql()`insert into contatos (id, phone, nome_whatsapp) values (${m.contato}, ${m.phone}, ${m.nome ?? null})

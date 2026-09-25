@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { sql } from '@/lib/db.ts'
+import { bancoDoPainel } from '@/lib/guarda.ts'
 import { ETAPA, haQuanto, PRIORIDADE, PRODUTO, STATUS } from '@/lib/rotulos.ts'
 import { Cabecalho, Pontuacao, SeloEtapa, SeloPrioridade, SeloStatus } from '../ui.tsx'
 
@@ -14,7 +14,8 @@ export default async function Leads({ searchParams }: { searchParams: Promise<Fi
   const temp = f.temperatura || null
   const et = f.etapa || null
   const st = f.status || null
-  const leads = await sql()`select id, phone, nome_whatsapp, lead->>'nome' as nome, lead->>'empresa' as empresa,
+  const db = await bancoDoPainel()
+  const leads = await db`select id, phone, nome_whatsapp, lead->>'nome' as nome, lead->>'empresa' as empresa,
       coalesce(lead->'servicos', '[]') as servicos, score, temperatura, etapa, status_comercial, atualizado_em
     from contatos
     where (${temp}::text is null or temperatura = ${temp})

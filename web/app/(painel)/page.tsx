@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { sql } from '@/lib/db.ts'
+import { bancoDoPainel } from '@/lib/guarda.ts'
 import { funil, PRIORIDADE } from '@/lib/rotulos.ts'
 import { Cabecalho } from './ui.tsx'
 
@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Visão geral' }
 const PRECO_MENSAGEM_META = 0.035
 
 export default async function VisaoGeral() {
-  const db = sql()
+  const db = await bancoDoPainel()
   const [[t], etapas, [m], dias] = await Promise.all([
     db`select count(*)::int as leads,
         count(*) filter (where temperatura = 'quente')::int as quente,
