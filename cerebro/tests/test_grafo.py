@@ -139,3 +139,9 @@ def test_reescrita_que_falha_fica_com_a_fala_segura(monkeypatch):
     assert len(chamadas) == 2
     assert r["resposta"].mensagem == grafo.FALA_SEGURA["continuar"]
     assert r["uso"] == USO
+
+
+def test_fala_segura_tira_so_a_frase_do_preco_e_guarda_a_pergunta(monkeypatch):
+    fala = "Ótimo! O Padrão sai por R$ 199. Qual a cidade da clínica?"
+    r, _ = responder_com(monkeypatch, [fala, fala])
+    assert r["resposta"].mensagem == "Ótimo! O valor exato o especialista da GeniAI confirma com você. Qual a cidade da clínica?"

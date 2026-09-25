@@ -31,4 +31,4 @@ async function chamar<T>(rota: string, corpo: unknown, ms: number): Promise<T> {
 // Partida a frio do Python + LLM; acima disso o cliente recebe FALHA em vez de silêncio.
 export const consultarCerebro = (p: Pedido) => chamar<Veredito>('/responder', p, 40_000)
 
-export const transcrever = (a: Audio) => chamar<Transcricao>('/transcrever', a, 30_000)
+export const transcrever = (a: Audio) => chamar<Transcricao>('/transcrever', a, 45_000)

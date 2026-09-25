@@ -369,6 +369,15 @@ test('áudio mudo: vira [áudio], e o que a OpenAI cobrou fica gravado', async (
   assert.deepEqual([f.mensagens[0].texto, f.mensagens[0].custo], ['[áudio]', 0.0015])
 })
 
+test('banco falhou ao gravar a transcrição: a Gê ainda responde', async () => {
+  const f = montar()
+  f.d.db.salvarTranscricao = async () => {
+    throw new Error('neon 500')
+  }
+  await receber(audio('1'), f.d)
+  assert.equal(f.enviadas.length, 1)
+})
+
 test('transcrição falhou: fica [áudio], e a Gê ainda responde (pedindo para escrever)', async () => {
   const f = montar()
   f.d.transcrever = async () => {

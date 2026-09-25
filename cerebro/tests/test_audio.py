@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from agente.audio import TETO_BYTES, baixar, cliente_http
+from agente.audio import TETO_BYTES, baixar, cliente_http, nome_do_arquivo
 
 
 def cliente_que_devolve(corpo: bytes) -> httpx.Client:
@@ -27,3 +27,9 @@ def test_recusa_redirecionamento_para_http():
         return httpx.Response(302, headers={"Location": "http://169.254.169.254/latest"})
     with pytest.raises(ValueError):
         baixar("https://z/a.ogg", cliente_http(transport=httpx.MockTransport(servidor)))
+
+
+def test_nome_do_arquivo_so_leva_extensao_que_a_openai_aceita():
+    assert nome_do_arquivo("https://z/voz/abc.mp3?x=1") == "abc.mp3"
+    assert nome_do_arquivo("https://z/voz/abc.opus") == "audio.ogg"
+    assert nome_do_arquivo("https://z/voz/abc") == "audio.ogg"

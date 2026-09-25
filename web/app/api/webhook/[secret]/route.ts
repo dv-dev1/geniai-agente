@@ -5,8 +5,8 @@ import { receber } from '@/lib/fluxo.ts'
 import { mesmoValor } from '@/lib/sessao.ts'
 import { enviarTexto, lerEvento } from '@/lib/zapi.ts'
 
-// Espera do debounce ou da transcrição (até 30 s) + cérebro (até 40 s) + send-text; o Hobby com Fluid aceita até 300.
-export const maxDuration = 120
+// Transcrição própria (até 45 s) + espera pela de outro áudio (até 45 s) + cérebro (até 40 s) + send-text; o Hobby com Fluid aceita até 300.
+export const maxDuration = 180
 
 export async function POST(req: Request, { params }: { params: Promise<{ secret: string }> }) {
   const { secret } = await params

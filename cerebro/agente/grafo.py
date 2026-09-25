@@ -1,4 +1,6 @@
+import logging
 import os
+import re
 from functools import cache
 from typing import Literal
 
@@ -81,9 +83,11 @@ def _situacao(e: Estado) -> str:
 
 
 TENTATIVAS = 2
+VALOR_COM_ESPECIALISTA = "O valor exato o especialista da GeniAI confirma com você."
+OFERTA = "Quer que eu passe seu contato para ele?"
 # Por ação: quem pediu humano segue encaminhado, quem encerrou segue encerrado.
 FALA_SEGURA = {
-    "continuar": "Esse valor o especialista da GeniAI confirma com você. Quer que eu passe seu contato para ele?",
+    "continuar": f"{VALOR_COM_ESPECIALISTA} {OFERTA}",
     "encaminhar_humano": f"Obrigada! Vou passar sua conversa para um especialista da GeniAI, que responde {HORARIO}.",
     "encerrar": "Obrigada pelo contato! Quando quiser retomar, é só chamar por aqui.",
 }
@@ -91,6 +95,15 @@ FALA_SEGURA = {
 
 def precos_inventados(mensagem: str) -> list[str]:
     return [trecho for trecho, valor in valores_em_reais(mensagem) if valor not in PRECOS]
+
+
+def _fala_segura(r: Resposta) -> str:
+    if r.acao != "continuar":
+        return FALA_SEGURA[r.acao]
+    # Troca só a frase do preço: a pergunta do passo em que a conversa está continua valendo.
+    frases = [VALOR_COM_ESPECIALISTA if precos_inventados(f) else f for f in re.split(r"(?<=[.!?])\s+", r.mensagem)]
+    fala = " ".join(dict.fromkeys(frases))
+    return fala if "?" in fala else f"{fala} {OFERTA}"
 
 
 def _despedida_com_pergunta(r: Resposta) -> bool:
@@ -120,6 +133,7 @@ def agente(e: Estado) -> Estado:
         if not e.get("problemas"):
             raise
         # A reescrita falhou: fica a primeira resposta, e o conferir põe a fala segura no lugar dela.
+        logging.getLogger(__name__).exception("reescrita falhou; segue a fala segura")
         resposta, uso = e["resposta"], dict.fromkeys(e["uso"], 0)
     anterior = e.get("uso", {})
     return {
@@ -137,7 +151,7 @@ def conferir(e: Estado) -> Estado:
         return {"problemas": p}
     # Preço errado vira promessa comercial, e pergunta na despedida fica sem resposta: sai a fala segura.
     if precos_inventados(r.mensagem) or _despedida_com_pergunta(r):
-        return {"problemas": [], "resposta": r.model_copy(update={"mensagem": FALA_SEGURA[r.acao]})}
+        return {"problemas": [], "resposta": r.model_copy(update={"mensagem": _fala_segura(r)})}
     # Só passou do tamanho: longa ainda é melhor que nenhuma.
     return {"problemas": []}
 

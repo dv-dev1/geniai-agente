@@ -18,7 +18,7 @@ export const HORAS_PAUSA = 24
 export const FALHA =
   'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
 export const AVISO_ENCAMINHADO = 'Sua conversa já está com um especialista da GeniAI; ele responde das 8h às 17h.'
-const ESPERA_TRANSCRICAO_S = 30
+const ESPERA_TRANSCRICAO_S = 45
 
 export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'ignorar') return
@@ -48,7 +48,10 @@ async function ouvir(id: string, audio: Audio, d: Deps): Promise<void> {
     console.error('transcrição falhou', id, erro)
     return { texto: '', custo_usd: 0 }
   })
-  await d.db.salvarTranscricao(id, t.texto ? PREFIXO_AUDIO + t.texto : AUDIO_SEM_TEXTO, t.custo_usd)
+  // Se o banco falhar aqui, a marca expira sozinha; a resposta ao cliente não pode cair junto.
+  await d.db
+    .salvarTranscricao(id, t.texto ? PREFIXO_AUDIO + t.texto : AUDIO_SEM_TEXTO, t.custo_usd)
+    .catch((erro) => console.error('transcrição não gravada', id, erro))
 }
 
 // Um texto que chega logo depois de um áudio não pode ser respondido antes de o áudio virar texto.
