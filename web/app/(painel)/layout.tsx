@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { sair } from '../login/acoes.ts'
+import { AoVivo } from './ao-vivo.tsx'
 import { Menu } from './menu.tsx'
 
 export default function LayoutPainel({ children }: { children: React.ReactNode }) {
@@ -13,11 +14,14 @@ export default function LayoutPainel({ children }: { children: React.ReactNode }
             <span className="text-xl font-medium tracking-tight">geniAI</span>
           </Link>
           <Menu />
-          <form action={sair} className="ml-auto">
-            <button type="submit" className="text-sm text-suave transition-colors duration-150 hover:text-white">
-              Sair
-            </button>
-          </form>
+          <div className="ml-auto flex items-center gap-5">
+            <AoVivo />
+            <form action={sair}>
+              <button type="submit" className="text-sm text-suave transition-colors duration-150 hover:text-white">
+                Sair
+              </button>
+            </form>
+          </div>
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">{children}</main>
