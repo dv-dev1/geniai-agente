@@ -233,8 +233,10 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "langchain-openai" },
     { name = "langgraph" },
+    { name = "openai" },
     { name = "pydantic" },
 ]
 
@@ -248,9 +250,11 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.141" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.28" },
     { name = "langchain-openai", specifier = ">=1.6" },
     { name = "langgraph", specifier = ">=1.2" },
+    { name = "openai", specifier = ">=3.19.2" },
     { name = "pydantic", specifier = ">=2.13" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.16" },

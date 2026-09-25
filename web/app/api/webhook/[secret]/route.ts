@@ -1,5 +1,5 @@
 import { after } from 'next/server'
-import { acordarCerebro, consultarCerebro } from '@/lib/cerebro.ts'
+import { acordarCerebro, consultarCerebro, transcrever } from '@/lib/cerebro.ts'
 import * as db from '@/lib/db.ts'
 import { receber } from '@/lib/fluxo.ts'
 import { mesmoValor } from '@/lib/sessao.ts'
@@ -20,6 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ secret:
       db,
       cerebro: consultarCerebro,
       acordar: acordarCerebro,
+      transcrever,
       enviar: enviarTexto,
       esperar: (ms) => new Promise((r) => setTimeout(r, ms)),
       debounceMs: Number(process.env.DEBOUNCE_MS ?? 6000),

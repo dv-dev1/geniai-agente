@@ -4,6 +4,7 @@ import secrets
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
+from agente.audio import transcrever
 from agente.grafo import Turno, responder
 from agente.lead import Lead
 
@@ -44,3 +45,13 @@ def rota_responder(pedido: Pedido) -> dict:
         "etapa": r["etapa"],
         "uso": r["uso"],
     }
+
+
+class PedidoAudio(BaseModel):
+    url: str
+    segundos: int = 0
+
+
+@app.post("/transcrever", dependencies=[Depends(exigir_token)])
+def rota_transcrever(pedido: PedidoAudio) -> dict:
+    return transcrever(pedido.url, pedido.segundos)

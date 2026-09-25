@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { Fragment } from 'react'
 import { formatarTelefone, linkWhatsApp, mensagemDoEspecialista, trechos } from '@/lib/abordagem.ts'
 import { MINUTOS_SESSAO } from '@/lib/db.ts'
+import { PREFIXO_AUDIO } from '@/lib/fluxo.ts'
 import { bancoDoPainel } from '@/lib/guarda.ts'
 import { PLANO, PORTE, PRODUTO, STATUS, URGENCIA } from '@/lib/rotulos.ts'
 import { type Lead, STATUS_COMERCIAL } from '@/lib/tipos.ts'
@@ -194,17 +195,21 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
                 m.autor === 'cliente' ? 'cartao' : 'ml-auto border border-ciano/30 bg-ciano/10'
               }`}
             >
-              <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">{m.autor}</div>
-              {trechos(m.texto).map(([t, negrito], j) =>
-                negrito ? (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: trechos de um texto fixo, a ordem nunca muda
-                  <strong key={j} className="font-semibold text-white">
-                    {t}
-                  </strong>
-                ) : (
-                  // biome-ignore lint/suspicious/noArrayIndexKey: idem
-                  <Fragment key={j}>{t}</Fragment>
-                ),
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">
+                {m.autor}
+                {m.texto.startsWith(PREFIXO_AUDIO) && <span className="text-ciano"> · áudio transcrito</span>}
+              </div>
+              {trechos(m.texto.startsWith(PREFIXO_AUDIO) ? m.texto.slice(PREFIXO_AUDIO.length) : m.texto).map(
+                ([t, negrito], j) =>
+                  negrito ? (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: trechos de um texto fixo, a ordem nunca muda
+                    <strong key={j} className="font-semibold text-white">
+                      {t}
+                    </strong>
+                  ) : (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: idem
+                    <Fragment key={j}>{t}</Fragment>
+                  ),
               )}
             </div>
           </Fragment>

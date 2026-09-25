@@ -50,6 +50,19 @@ def test_header_fora_do_ascii_recusa_com_401(monkeypatch):
     assert r.status_code == 401
 
 
+def test_transcrever_exige_token(monkeypatch):
+    monkeypatch.setenv("AGENTE_TOKEN", "segredo")
+    assert cliente.post("/transcrever", json={"url": "https://z/a.ogg"}).status_code == 401
+
+
+def test_transcrever_devolve_texto_e_custo(monkeypatch):
+    monkeypatch.setenv("AGENTE_TOKEN", "segredo")
+    monkeypatch.setattr(main, "transcrever", lambda url, segundos: {"texto": f"ouvi {segundos} s", "custo_usd": 0.1})
+    r = cliente.post("/transcrever", json={"url": "https://z/a.ogg", "segundos": 7},
+                     headers={"Authorization": "Bearer segredo"})
+    assert r.json() == {"texto": "ouvi 7 s", "custo_usd": 0.1}
+
+
 def test_saude_responde_sem_token_e_sem_llm(monkeypatch):
     monkeypatch.delenv("AGENTE_TOKEN", raising=False)
     assert cliente.get("/saude").json() == {"ok": True}

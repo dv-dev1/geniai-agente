@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Pedido, Veredito } from '../lib/cerebro.ts'
-import { AVISO_ENCAMINHADO, type Deps, FALHA, receber } from '../lib/fluxo.ts'
+import { AVISO_ENCAMINHADO, type Deps, FALHA, PREFIXO_AUDIO, receber } from '../lib/fluxo.ts'
 import type { Lead, Turno } from '../lib/tipos.ts'
 import type { Evento } from '../lib/zapi.ts'
 
@@ -30,6 +30,7 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
   const d: Deps = {
     debounceMs: 0,
     acordar: () => {},
+    transcrever: async () => ({ texto: 'quero o audiobot', custo_usd: 0.0004 }),
     esperar: () => new Promise((r) => setTimeout(r, 5)),
     enviar: async (phone, texto) => {
       enviadas.push({ phone, texto })
@@ -115,6 +116,9 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
           encaminhado ? { etapa: 'encaminhado' } : {},
         )
         relogio.agora += 1
+      },
+      async salvarTranscricao(id, texto) {
+        Object.assign(mensagens.find((m) => m.id === id) ?? {}, { texto })
       },
       async pausar(id) {
         Object.assign(contatos.get(id) ?? {}, { pausado: true })
@@ -291,6 +295,66 @@ test('veredito do cérebro é salvo e a resposta entra no histórico', async () 
   assert.equal(f.contatos.get('C1')?.temperatura, 'quente')
   const { em: _em, ...ultima } = f.mensagens.at(-1) ?? { em: 0 }
   assert.deepEqual(ultima, { id: 'BOT1', contato: 'C1', autor: 'bot', texto: 'olá!', respondida: true })
+})
+
+const audio = (id: string): Evento => ({
+  tipo: 'cliente',
+  id,
+  contato: 'C1',
+  phone: '5583999990000',
+  nome: 'Ana',
+  texto: '[áudio]',
+  audio: { url: 'https://z/a.ogg', segundos: 7 },
+})
+
+test('áudio é transcrito e a Gê responde ao que foi dito', async () => {
+  const f = montar()
+  await receber(audio('1'), f.d)
+  assert.deepEqual(
+    f.pedidos[0].historico.map((t) => t.texto),
+    [`${PREFIXO_AUDIO}quero o audiobot`],
+  )
+})
+
+test('áudio seguido de texto: a conversa fica na ordem em que chegou, mesmo com a transcrição demorando', async () => {
+  const f = montar()
+  let ouvir = () => {}
+  f.d.transcrever = () => new Promise((r) => (ouvir = () => r({ texto: 'meu restaurante', custo_usd: 0 })))
+  const p1 = receber(audio('1'), f.d)
+  await passo()
+  const p2 = receber(cliente('2', 'é em Recife'), f.d)
+  await passo()
+  ouvir()
+  await Promise.all([p1, p2])
+  assert.deepEqual(
+    f.pedidos[0].historico.map((t) => t.texto),
+    [`${PREFIXO_AUDIO}meu restaurante`, 'é em Recife'],
+  )
+})
+
+test('transcrição falhou: fica [áudio], e a Gê ainda responde (pedindo para escrever)', async () => {
+  const f = montar()
+  f.d.transcrever = async () => {
+    throw new Error('openai 500')
+  }
+  await receber(audio('1'), f.d)
+  assert.deepEqual(
+    f.pedidos[0].historico.map((t) => t.texto),
+    ['[áudio]'],
+  )
+  assert.equal(f.enviadas.length, 1)
+})
+
+test('reentrega do mesmo áudio não paga a transcrição de novo', async () => {
+  const f = montar()
+  let vezes = 0
+  f.d.transcrever = async () => {
+    vezes++
+    return { texto: 'oi', custo_usd: 0 }
+  }
+  await receber(audio('1'), f.d)
+  await receber(audio('1'), f.d)
+  assert.equal(vezes, 1)
 })
 
 test('evento ignorado não toca em nada', async () => {

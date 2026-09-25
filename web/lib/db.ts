@@ -63,6 +63,10 @@ export async function registrarMensagem(m: NovaMensagem): Promise<boolean> {
   return r.length > 0
 }
 
+export async function salvarTranscricao(id: string, texto: string): Promise<void> {
+  await sql()`update mensagens set texto = ${texto} where id = ${id}`
+}
+
 export async function ultimaDoCliente(contato: string): Promise<string | null> {
   const r = await sql()`select id from mensagens where contato_id = ${contato} and autor = 'cliente'
     order by criado_em desc limit 1`

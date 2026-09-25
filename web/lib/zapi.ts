@@ -1,3 +1,5 @@
+import type { Audio } from './tipos.ts'
+
 export type Evento =
   | {
       tipo: 'cliente'
@@ -6,6 +8,7 @@ export type Evento =
       phone: string
       nome: string | null
       texto: string
+      audio?: Audio
     }
   | { tipo: 'humano'; id: string; contato: string; phone: string; texto: string }
   | { tipo: 'ignorar' }
@@ -26,7 +29,7 @@ type Payload = {
   waitingMessage?: boolean
   text?: { message?: string }
   image?: { caption?: string }
-  audio?: unknown
+  audio?: { audioUrl?: string; seconds?: number }
 }
 
 const IGNORAR: Evento = { tipo: 'ignorar' }
@@ -49,7 +52,8 @@ export function lerEvento(body: unknown): Evento {
     return { tipo: 'humano', id: p.messageId, contato, phone, texto: texto ?? '[mídia]' }
   }
   if (!texto) return IGNORAR
-  return { tipo: 'cliente', id: p.messageId, contato, phone, nome: p.senderName ?? null, texto }
+  const audio = p.audio?.audioUrl ? { audio: { url: p.audio.audioUrl, segundos: p.audio.seconds ?? 0 } } : {}
+  return { tipo: 'cliente', id: p.messageId, contato, phone, nome: p.senderName ?? null, texto, ...audio }
 }
 
 export async function enviarTexto(phone: string, message: string): Promise<string> {

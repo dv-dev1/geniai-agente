@@ -1,12 +1,14 @@
-import type { consultarCerebro, Veredito } from './cerebro.ts'
+import type { consultarCerebro, transcrever, Veredito } from './cerebro.ts'
 import type * as banco from './db.ts'
 import type { Contato } from './db.ts'
+import type { Audio } from './tipos.ts'
 import type { Evento } from './zapi.ts'
 
 export type Deps = {
   db: Omit<typeof banco, 'sql' | 'sqlDemo' | 'comBanco' | 'ehTelefoneDemo' | 'MINUTOS_SESSAO'>
   cerebro: typeof consultarCerebro
   acordar: () => void
+  transcrever: typeof transcrever
   enviar: (phone: string, texto: string) => Promise<string>
   esperar: (ms: number) => Promise<void>
   debounceMs: number
@@ -16,6 +18,7 @@ export const HORAS_PAUSA = 24
 export const FALHA =
   'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
 export const AVISO_ENCAMINHADO = 'Sua conversa já está com um especialista da GeniAI; ele responde das 8h às 17h.'
+export const PREFIXO_AUDIO = '[áudio] '
 
 export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'ignorar') return
@@ -31,10 +34,21 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'humano') return d.db.pausar(e.contato, HORAS_PAUSA)
 
   d.acordar()
-  await d.esperar(d.debounceMs)
+  // A mensagem já está gravada: transcrever junto com a espera não muda a ordem da conversa.
+  await Promise.all([e.audio && ouvir(e.id, e.audio, d), d.esperar(d.debounceMs)])
   // Chegou outra mensagem durante a espera: quem responde é a espera dela.
   if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return
   await atender(e.contato, d)
+}
+
+// Na falha fica o "[áudio]" já gravado, e a Gê pede para a pessoa escrever.
+async function ouvir(id: string, audio: Audio, d: Deps): Promise<void> {
+  try {
+    const t = await d.transcrever(audio)
+    if (t.texto) await d.db.salvarTranscricao(id, PREFIXO_AUDIO + t.texto)
+  } catch (erro) {
+    console.error('transcrição falhou', id, erro)
+  }
 }
 
 async function atender(contatoId: string, d: Deps): Promise<void> {

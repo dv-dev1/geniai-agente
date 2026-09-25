@@ -51,10 +51,11 @@ test('mensagem digitada no celular da empresa é humano, com texto ou mídia', (
   assert.equal(lerEvento({ ...semTexto, fromMe: true, image: { imageUrl: 'x' } }).tipo, 'humano')
 })
 
-test('áudio do cliente vira [áudio] e legenda de imagem vira texto', () => {
-  const audio = lerEvento({ ...semTexto, audio: { ptt: true, audioUrl: 'x' } })
+test('áudio do cliente leva a URL e a duração, com [áudio] de reserva; legenda de imagem vira texto', () => {
+  const audio = lerEvento({ ...semTexto, audio: { ptt: true, seconds: 7, audioUrl: 'https://z/a.ogg' } })
   const imagem = lerEvento({ ...semTexto, image: { caption: 'meu cardápio' } })
   assert.equal(audio.tipo === 'cliente' && audio.texto, '[áudio]')
+  assert.deepEqual(audio.tipo === 'cliente' && audio.audio, { url: 'https://z/a.ogg', segundos: 7 })
   assert.equal(imagem.tipo === 'cliente' && imagem.texto, 'meu cardápio')
 })
 
