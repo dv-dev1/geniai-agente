@@ -19,7 +19,7 @@ cd cerebro && uv run python -m agente.avaliar
 # 6 personas; cada linha "ok": ≤ 7 mensagens do bot e temperatura final = esperada; exit 0
 cd web && npm test          # node:test: parse do webhook Z-API, debounce, dedupe, pausa humana, falha do cérebro
 cd web && npm run lint && npx tsc --noEmit && npm run build
-curl -s -o /dev/null -w '%{http_code}\n' https://geniai-web.vercel.app/                                   # 401
+curl -s -o /dev/null -w '%{http_code}\n' https://geniai-web.vercel.app/                                   # 307 para /login
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://geniai-web.vercel.app/api/webhook/segredo-errado # 404
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://geniai-cerebro.vercel.app/responder -d '{}'       # 401
 ```
@@ -28,7 +28,7 @@ Manual, no WhatsApp real: mandar "oi", "tudo bem?" e "queria saber de automaçã
 
 ## Fora de escopo
 
-- Transcrição de áudio (o bot pede para o cliente escrever), leitura de imagem ou documento.
+- Leitura de imagem ou documento. Áudio a Gê entende: o cérebro transcreve (`specs/2026-09-25-vitrine.md`).
 - Botões e listas interativas: a própria Z-API documenta que são instáveis. A Gê pergunta em texto corrido, sem menu numerado (`specs/2026-09-24-ge-tom-e-custo.md`).
 - Follow-up e templates fora da janela de 24 h, notificação de lead quente, integração com CRM, rastreio de anúncio Click-to-WhatsApp.
 - RAG ou banco vetorial: a base de conhecimento cabe inteira no prompt.
@@ -44,7 +44,7 @@ Manual, no WhatsApp real: mandar "oi", "tudo bem?" e "queria saber de automaçã
   - O debounce fica no Next porque a Vercel não tem `waitUntil` para Python.
   - O cérebro é sem estado: recebe o histórico e o lead e devolve `{mensagem, lead, score, temperatura, etapa, acao}`.
   - A rota do cérebro exige `Authorization: Bearer <AGENTE_TOKEN>`.
-- **LangGraph sem checkpointer.** O estado mora no Postgres, que o dashboard lê. O grafo é `agente → qualificar`: o nó `agente` chama o LLM e o nó `qualificar` mescla e pontua em código. Ferramentas como agenda e CRM entram como nós novos quando existirem.
+- **LangGraph sem checkpointer.** O estado mora no Postgres, que o dashboard lê. O grafo é `agente → conferir → qualificar`: o nó `agente` chama o LLM, o `conferir` barra em código preço fora da base, despedida com pergunta e mensagem longa (e devolve ao `agente` para reescrever uma vez), e o `qualificar` mescla e pontua em código. Ferramentas como agenda e CRM entram como nós novos quando existirem.
 - **LLM:** `gpt-4.1-mini` via `langchain-openai`, uma chamada por turno com saída estruturada (`json_schema` strict).
 - **Estrutura pública:**
   - `cerebro/pyproject.toml` com build-system, `requires-python >=3.11`, licença, extra `dev`, `[tool.ruff]` e CI em Python 3.11 e 3.12.
