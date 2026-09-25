@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { Pool } from '@neondatabase/serverless'
-import { type Etapa, ETAPAS } from '../lib/tipos.ts'
+import { ETAPAS, type Etapa } from '../lib/tipos.ts'
 
 // Dados fictícios para apresentação. Só roda no banco geniai_demo: produção guarda leads reais.
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
