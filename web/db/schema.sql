@@ -27,3 +27,6 @@ create index if not exists mensagens_contato on mensagens (contato_id, criado_em
 -- Sessão: 30 min sem mensagem abrem uma nova; o bot só lê o histórico dela.
 alter table contatos add column if not exists sessao_inicio timestamptz not null default now();
 alter table contatos add column if not exists encerrada_em timestamptz;
+
+-- O que a OpenAI cobrou por mensagem: a resposta do bot ou a transcrição do áudio do cliente.
+alter table mensagens add column if not exists custo_usd numeric not null default 0;

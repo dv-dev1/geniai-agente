@@ -9,6 +9,7 @@ export type NovaMensagem = {
   nome?: string | null
   autor: Turno['autor']
   texto: string
+  custo?: number
 }
 export type Contato = {
   id: string
@@ -57,14 +58,14 @@ export async function registrarMensagem(m: NovaMensagem): Promise<boolean> {
     on conflict (id) do update set
       phone = case when excluded.phone like '%@lid' then contatos.phone else excluded.phone end,
       nome_whatsapp = coalesce(excluded.nome_whatsapp, contatos.nome_whatsapp)`
-  const r = await sql()`insert into mensagens (id, contato_id, autor, texto, respondida)
-    values (${m.id}, ${m.contato}, ${m.autor}, ${m.texto}, ${m.autor !== 'cliente'})
+  const r = await sql()`insert into mensagens (id, contato_id, autor, texto, respondida, custo_usd)
+    values (${m.id}, ${m.contato}, ${m.autor}, ${m.texto}, ${m.autor !== 'cliente'}, ${m.custo ?? 0})
     on conflict (id) do nothing returning id`
   return r.length > 0
 }
 
-export async function salvarTranscricao(id: string, texto: string): Promise<void> {
-  await sql()`update mensagens set texto = ${texto} where id = ${id}`
+export async function salvarTranscricao(id: string, texto: string, custo: number): Promise<void> {
+  await sql()`update mensagens set texto = ${texto}, custo_usd = ${custo} where id = ${id}`
 }
 
 export async function ultimaDoCliente(contato: string): Promise<string | null> {

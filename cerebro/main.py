@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from agente.audio import transcrever
-from agente.grafo import Turno, responder
+from agente.grafo import Turno, custo_usd, responder
 from agente.lead import Lead
 
 app = FastAPI(title="GeniAI · cérebro")
@@ -44,6 +44,7 @@ def rota_responder(pedido: Pedido) -> dict:
         "temperatura": r["temperatura"],
         "etapa": r["etapa"],
         "uso": r["uso"],
+        "custo_usd": custo_usd(r["uso"]),
     }
 
 

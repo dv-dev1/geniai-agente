@@ -114,3 +114,8 @@ def test_mensagem_longa_e_encurtada_e_depois_de_duas_tentativas_passa_como_esta(
     assert (len(chamadas), r["resposta"].mensagem) == (2, "curta?")
     r, chamadas = responder_com(monkeypatch, [longa, longa])
     assert (len(chamadas), r["resposta"].mensagem) == (2, longa)
+
+
+def test_custo_desconta_o_cache_da_entrada():
+    uso = {"entrada": 1_000_000, "cache": 500_000, "saida": 1_000_000}
+    assert grafo.custo_usd(uso) == 0.5 * 0.40 + 0.5 * 0.10 + 1.60

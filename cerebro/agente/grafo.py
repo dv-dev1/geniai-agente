@@ -37,6 +37,14 @@ class Estado(TypedDict, total=False):
     etapa: Etapa
 
 
+PRECO_USD_POR_MILHAO = {"entrada": 0.40, "cache": 0.10, "saida": 1.60}
+
+
+def custo_usd(uso: dict[str, int]) -> float:
+    p = PRECO_USD_POR_MILHAO
+    return ((uso["entrada"] - uso["cache"]) * p["entrada"] + uso["cache"] * p["cache"] + uso["saida"] * p["saida"]) / 1e6
+
+
 @cache
 def _modelo():
     llm = ChatOpenAI(model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"), temperature=0.4, max_retries=2, timeout=30)

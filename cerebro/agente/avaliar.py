@@ -6,11 +6,10 @@ from dataclasses import dataclass
 
 from langchain_openai import ChatOpenAI
 
-from .grafo import Turno, precos_inventados, responder
+from .grafo import Turno, custo_usd, precos_inventados, responder
 from .lead import Lead
 from .prompts import MAX_CARACTERES, MAX_MENSAGENS_BOT
 
-PRECO_USD_POR_MILHAO = {"entrada": 0.40, "cache": 0.10, "saida": 1.60}
 MENU = re.compile(r"^\s*\d+[).]", re.MULTILINE)
 
 
@@ -66,8 +65,7 @@ def conversar(p: Persona) -> dict:
         lead, msgs_bot, acao = r["lead"], msgs_bot + 1, r["resposta"].acao
         uso = {k: uso[k] + r["uso"][k] for k in uso}
         temp = r["temperatura"]
-    custo = ((uso["entrada"] - uso["cache"]) * PRECO_USD_POR_MILHAO["entrada"]
-             + uso["cache"] * PRECO_USD_POR_MILHAO["cache"] + uso["saida"] * PRECO_USD_POR_MILHAO["saida"]) / 1e6
+    custo = custo_usd(uso)
     falas = [t["texto"] for t in historico if t["autor"] == "bot"]
     ok = (msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
           and all(len(f) <= MAX_CARACTERES and not MENU.search(f) and not precos_inventados(f) for f in falas)

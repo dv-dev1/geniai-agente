@@ -9,6 +9,7 @@ export type Veredito = {
   score: number
   temperatura: Temperatura
   etapa: Etapa
+  custo_usd?: number
 }
 
 // Sem await: é só para a Vercel subir o Python antes da consulta de verdade.

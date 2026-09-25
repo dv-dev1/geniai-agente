@@ -5,7 +5,15 @@ import { AVISO_ENCAMINHADO, type Deps, FALHA, PREFIXO_AUDIO, receber } from '../
 import type { Lead, Turno } from '../lib/tipos.ts'
 import type { Evento } from '../lib/zapi.ts'
 
-type Linha = { id: string; contato: string; autor: Turno['autor']; texto: string; respondida: boolean; em: number }
+type Linha = {
+  id: string
+  contato: string
+  autor: Turno['autor']
+  texto: string
+  respondida: boolean
+  em: number
+  custo: number
+}
 type Ficha = {
   phone: string
   lead: Lead
@@ -67,6 +75,7 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
           texto: m.texto,
           respondida: m.autor !== 'cliente',
           em: relogio.agora,
+          custo: m.custo ?? 0,
         })
         return true
       },
@@ -117,8 +126,8 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
         )
         relogio.agora += 1
       },
-      async salvarTranscricao(id, texto) {
-        Object.assign(mensagens.find((m) => m.id === id) ?? {}, { texto })
+      async salvarTranscricao(id, texto, custo) {
+        Object.assign(mensagens.find((m) => m.id === id) ?? {}, { texto, custo })
       },
       async pausar(id) {
         Object.assign(contatos.get(id) ?? {}, { pausado: true })
@@ -294,7 +303,7 @@ test('veredito do cérebro é salvo e a resposta entra no histórico', async () 
   await receber(cliente('1'), f.d)
   assert.equal(f.contatos.get('C1')?.temperatura, 'quente')
   const { em: _em, ...ultima } = f.mensagens.at(-1) ?? { em: 0 }
-  assert.deepEqual(ultima, { id: 'BOT1', contato: 'C1', autor: 'bot', texto: 'olá!', respondida: true })
+  assert.deepEqual(ultima, { id: 'BOT1', contato: 'C1', autor: 'bot', texto: 'olá!', respondida: true, custo: 0 })
 })
 
 const audio = (id: string): Evento => ({
@@ -355,6 +364,18 @@ test('reentrega do mesmo áudio não paga a transcrição de novo', async () => 
   await receber(audio('1'), f.d)
   await receber(audio('1'), f.d)
   assert.equal(vezes, 1)
+})
+
+test('o custo de IA fica na mensagem: o da transcrição no áudio, o do cérebro na resposta', async () => {
+  const f = montar({ custo_usd: 0.0008 })
+  await receber(audio('1'), f.d)
+  assert.deepEqual(
+    f.mensagens.map((m) => [m.autor, m.custo]),
+    [
+      ['cliente', 0.0004],
+      ['bot', 0.0008],
+    ],
+  )
 })
 
 test('evento ignorado não toca em nada', async () => {

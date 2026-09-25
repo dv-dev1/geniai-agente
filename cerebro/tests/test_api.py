@@ -35,6 +35,7 @@ def test_com_token_devolve_o_veredito(monkeypatch):
     assert r.json() | {"lead": None} == {
         "mensagem": "olá!", "acao": "continuar", "lead": None, "score": 5,
         "temperatura": "frio", "etapa": "triagem", "uso": {"entrada": 1, "cache": 0, "saida": 1},
+        "custo_usd": 0.000002,
     }
     assert r.json()["lead"]["nome"] == "Ana"
 

@@ -45,7 +45,7 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
 async function ouvir(id: string, audio: Audio, d: Deps): Promise<void> {
   try {
     const t = await d.transcrever(audio)
-    if (t.texto) await d.db.salvarTranscricao(id, PREFIXO_AUDIO + t.texto)
+    if (t.texto) await d.db.salvarTranscricao(id, PREFIXO_AUDIO + t.texto, t.custo_usd)
   } catch (erro) {
     console.error('transcrição falhou', id, erro)
   }
@@ -80,7 +80,7 @@ async function atender(contatoId: string, d: Deps): Promise<void> {
   const texto = v?.mensagem ?? FALHA
   // ponytail: se o send-text falhar, as mensagens já foram reivindicadas e ficam sem resposta; reenfileirar quando a Z-API falhar de verdade.
   const id = await d.enviar(c.phone, texto)
-  await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto })
+  await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto, custo: v?.custo_usd })
   // A falha também promete um especialista; o painel precisa mostrar esse lead como encaminhado.
   if (v?.acao !== 'continuar') await d.db.encerrar(contatoId, !v || v.acao === 'encaminhar_humano')
 }

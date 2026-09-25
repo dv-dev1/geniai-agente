@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { Pool } from '@neondatabase/serverless'
+import { PREFIXO_AUDIO } from '../lib/fluxo.ts'
 import { ETAPAS, type Etapa } from '../lib/tipos.ts'
 
 // Dados fictícios para apresentação. Só roda no banco geniai_demo: produção guarda leads reais.
@@ -222,7 +223,8 @@ function montar(i: number) {
     falas.push(['bot', `Prazer, ${nome}! O que você gostaria de resolver na ${empresa}?`, 3.2])
   }
   if (passou('apresentacao')) {
-    falas.push(['cliente', `Queria ${n.dor}`, 6])
+    const porAudio = i % 4 === 1
+    falas.push(['cliente', porAudio ? `${PREFIXO_AUDIO}Então, a gente queria ${n.dor}, sabe?` : `Queria ${n.dor}`, 6])
     falas.push([
       'bot',
       n.produto === 'audiobot'
@@ -354,9 +356,12 @@ for (let i = 0; i < NOMES.length; i++) {
     [id, id, NOMES[i], lead, score, temperatura, etapa, status, new Date(inicio), fim, encerrada],
   )
   for (const [j, [autor, texto, min]] of falas.entries()) {
+    // Na faixa do que o avaliar mede: US$ 0,0006 a 0,0010 por resposta; um áudio curto transcrito, US$ 0,0004.
+    const custo = autor === 'bot' ? 0.0006 + ((i + j) % 5) * 0.0001 : texto.startsWith(PREFIXO_AUDIO) ? 0.0004 : 0
     await db.query(
-      'insert into mensagens (id, contato_id, autor, texto, respondida, criado_em) values ($1, $2, $3, $4, true, $5)',
-      [`${id}-${j}`, id, autor, texto, em(min)],
+      `insert into mensagens (id, contato_id, autor, texto, respondida, criado_em, custo_usd)
+       values ($1, $2, $3, $4, true, $5, $6)`,
+      [`${id}-${j}`, id, autor, texto, em(min), custo],
     )
   }
 }

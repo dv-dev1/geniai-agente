@@ -19,7 +19,9 @@ export default async function VisaoGeral() {
     db`select etapa, count(*)::int as n from contatos group by etapa`,
     db`select count(*) filter (where autor = 'bot')::int as bot,
         count(distinct contato_id) filter (where autor = 'bot')::int as conversas,
-        count(*) filter (where autor <> 'cliente' and criado_em >= date_trunc('month', now()))::int as empresa_mes
+        count(*) filter (where autor <> 'cliente' and criado_em >= date_trunc('month', now()))::int as empresa_mes,
+        coalesce(sum(custo_usd), 0)::float as ia,
+        coalesce(sum(custo_usd) filter (where criado_em >= date_trunc('month', now())), 0)::float as ia_mes
       from mensagens`,
     db`select to_char(d, 'DD/MM') as dia, count(c.id)::int as n
       from generate_series((now() at time zone 'America/Fortaleza')::date - 13,
@@ -30,7 +32,10 @@ export default async function VisaoGeral() {
   const f = funil(Object.fromEntries(etapas.map((e) => [e.etapa, e.n])))
   const topoFunil = Math.max(1, f.degraus[0].n)
   const maxDia = Math.max(1, ...dias.map((d) => d.n as number))
-  const msgsPorConversa = m.conversas ? (m.bot / m.conversas).toFixed(1) : '—'
+  const msgsPorConversa = m.conversas
+    ? (m.bot / m.conversas).toLocaleString('pt-BR', { maximumFractionDigits: 1 })
+    : '—'
+  const iaPorConversa = m.conversas ? dolar(m.ia / m.conversas, 4) : '—'
   // Simulação: a GeniAI não usa a API oficial aqui, e a franquia grátis fica de fora para o número mostrar o custo real das mensagens.
   const custoMeta = m.empresa_mes * PRECO_MENSAGEM_META
 
@@ -41,10 +46,11 @@ export default async function VisaoGeral() {
         descricao={`${t.leads} ${t.leads === 1 ? 'lead atendido' : 'leads atendidos'} pela Gê no WhatsApp`}
       />
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Cartao rotulo="Leads" valor={t.leads} />
         <Cartao rotulo="Prioridade alta" valor={t.quente} destaque />
         <Cartao rotulo="Msgs do bot por conversa" valor={msgsPorConversa} />
+        <Cartao rotulo={`Custo de IA por conversa · ${dolar(m.ia_mes)} no mês`} valor={iaPorConversa} />
         <Cartao
           rotulo={`Custo simulado na API oficial (mês) · ${m.empresa_mes} msgs × R$ 0,035`}
           valor={custoMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -125,6 +131,10 @@ export default async function VisaoGeral() {
     </div>
   )
 }
+
+// Uma conversa inteira custa menos de um centavo de dólar: por conversa, quatro casas.
+const dolar = (v: number, casas = 2) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: casas })
 
 function Cartao({ rotulo, valor, destaque }: { rotulo: string; valor: string | number; destaque?: boolean }) {
   return (
