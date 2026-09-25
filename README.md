@@ -39,7 +39,7 @@ cd cerebro && uv sync --extra dev && uv run pytest
 uv run --env-file .env python -m agente.chat            # conversa com a Gê no terminal
 
 cd web && npm ci && vercel env pull .env.local && npm test
-npm run dev                                              # dashboard em localhost:3000, com basic auth
+npm run dev                                              # dashboard em localhost:3000; login em /login (sessão JWT de 7 dias, AUTH_SECRET no .env.local)
 ```
 
 ## Z-API
