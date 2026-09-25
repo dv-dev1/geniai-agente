@@ -42,3 +42,75 @@ def test_base_ainda_cabe_inteira_no_prompt():
     # ~14k tokens. Acima disso a base inteira passa a pesar: hora de trocar por um nó de busca (RAG) no grafo.
     from agente.prompts import SISTEMA
     assert len(SISTEMA) < 50_000
+
+
+def llm_em_sequencia(falas: list[str], acao: str):
+    chamadas = []
+
+    def chamar(mensagens):
+        chamadas.append(mensagens)
+        fala = falas[min(len(chamadas), len(falas)) - 1]
+        return grafo.Resposta(mensagem=fala, lead=Lead.vazio(), acao=acao), USO
+    return chamar, chamadas
+
+
+def responder_com(monkeypatch, falas: list[str], acao: str = "continuar"):
+    chamar, chamadas = llm_em_sequencia(falas, acao)
+    monkeypatch.setattr(grafo, "chamar_llm", chamar)
+    return grafo.responder([{"autor": "cliente", "texto": "quanto custa?"}], Lead.vazio(), 2, True), chamadas
+
+
+def test_precos_da_base_passam_e_os_de_fora_nao():
+    assert grafo.precos_inventados("O Padrão sai por *R$ 399,00*, o Inicial por R$299.") == []
+    assert grafo.precos_inventados("R$ 999 de implementação mais R$ 499 por mês.") == []
+    assert grafo.precos_inventados("Fica R$ 199 ou R$ 299,90.") == ["R$ 199", "R$ 299,90"]
+    # A soma do primeiro mês do Disparador está na base; uma soma que a base não tem é preço inventado.
+    assert grafo.precos_inventados("No total, R$ 1.498 no primeiro mês.") == []
+    assert grafo.precos_inventados("Os dois juntos dão R$ 1.298.") == ["R$ 1.298"]
+
+
+def test_preco_da_base_passa_de_primeira(monkeypatch):
+    r, chamadas = responder_com(monkeypatch, ["O Padrão sai por *R$ 399*. Quantas horas por dia?"])
+    assert len(chamadas) == 1
+    assert r["resposta"].mensagem.startswith("O Padrão")
+
+
+def test_preco_inventado_faz_a_ge_reescrever_uma_vez(monkeypatch):
+    r, chamadas = responder_com(monkeypatch, ["Sai por R$ 199.", "Sai por R$ 299."])
+    assert r["resposta"].mensagem == "Sai por R$ 299."
+    assert len(chamadas) == 2
+    assert "R$ 199" in chamadas[1][-1].content
+    assert r["uso"] == {k: 2 * v for k, v in USO.items()}
+
+
+def test_preco_inventado_duas_vezes_vira_fala_segura(monkeypatch):
+    r, chamadas = responder_com(monkeypatch, ["Sai por R$ 199.", "Sai por R$ 1.298."])
+    assert len(chamadas) == 2
+    assert r["resposta"].mensagem == grafo.FALA_SEGURA
+    assert r["resposta"].acao == "continuar"
+
+
+def test_despedida_com_pergunta_e_reescrita(monkeypatch):
+    falas = ["Você é quem decide? Vou passar para o especialista.", "Obrigada, Roberto! Vou passar para o especialista."]
+    r, chamadas = responder_com(monkeypatch, falas, "encaminhar_humano")
+    assert len(chamadas) == 2
+    assert "tire toda pergunta" in chamadas[1][-1].content
+    assert r["resposta"].mensagem == falas[1]
+
+
+def test_despedida_com_pergunta_duas_vezes_vira_despedida_fixa(monkeypatch):
+    r, _ = responder_com(monkeypatch, ["Posso passar?", "Tudo certo?"], "encaminhar_humano")
+    assert (r["resposta"].mensagem, r["resposta"].acao) == (grafo.DESPEDIDA, "encaminhar_humano")
+
+
+def test_pergunta_fora_da_despedida_e_normal(monkeypatch):
+    _, chamadas = responder_com(monkeypatch, ["Qual o nome da empresa?"])
+    assert len(chamadas) == 1
+
+
+def test_mensagem_longa_e_encurtada_e_depois_de_duas_tentativas_passa_como_esta(monkeypatch):
+    longa = "x" * 350
+    r, chamadas = responder_com(monkeypatch, [longa, "curta?"])
+    assert (len(chamadas), r["resposta"].mensagem) == (2, "curta?")
+    r, chamadas = responder_com(monkeypatch, [longa, longa])
+    assert (len(chamadas), r["resposta"].mensagem) == (2, longa)

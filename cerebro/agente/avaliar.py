@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from langchain_openai import ChatOpenAI
 
-from .grafo import Turno, responder
+from .grafo import Turno, precos_inventados, responder
 from .lead import Lead
 from .prompts import MAX_CARACTERES, MAX_MENSAGENS_BOT
 
@@ -70,7 +70,7 @@ def conversar(p: Persona) -> dict:
              + uso["cache"] * PRECO_USD_POR_MILHAO["cache"] + uso["saida"] * PRECO_USD_POR_MILHAO["saida"]) / 1e6
     falas = [t["texto"] for t in historico if t["autor"] == "bot"]
     ok = (msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
-          and all(len(f) <= MAX_CARACTERES and not MENU.search(f) for f in falas)
+          and all(len(f) <= MAX_CARACTERES and not MENU.search(f) and not precos_inventados(f) for f in falas)
           and (acao != "encaminhar_humano" or (despedida(falas[-1]) and completo(lead))))
     return {"p": p, "msgs": msgs_bot, "temp": temp, "acao": acao, "custo": custo, "ok": ok, "historico": historico}
 

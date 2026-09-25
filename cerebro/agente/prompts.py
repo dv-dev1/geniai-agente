@@ -1,9 +1,11 @@
+import re
 from pathlib import Path
 
 MAX_MENSAGENS_BOT = 7
 MAX_CARACTERES = 300
 
 _KB = "\n\n".join(p.read_text(encoding="utf-8") for p in sorted((Path(__file__).parent.parent / "kb").glob("*.md")))
+PRECOS = {int(v.replace(".", "")) for v in re.findall(r"R\$\s*(\d[\d.]*\d)", _KB)}
 
 # Fixo e no começo da conversa para a OpenAI cachear o prefixo (input em cache custa 1/4).
 SISTEMA = f"""Você é a Gê, assistente virtual da GeniAI, atendendo no WhatsApp.

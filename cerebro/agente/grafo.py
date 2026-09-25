@@ -1,4 +1,5 @@
 import os
+import re
 from functools import cache
 from typing import Literal
 
@@ -9,7 +10,7 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from .lead import Etapa, Lead, Temperatura, etapa, mesclar, pontuar, temperatura
-from .prompts import MAX_MENSAGENS_BOT, SISTEMA
+from .prompts import MAX_CARACTERES, MAX_MENSAGENS_BOT, PRECOS, SISTEMA
 
 
 class Turno(TypedDict):
@@ -30,6 +31,7 @@ class Estado(TypedDict, total=False):
     telefone_conhecido: bool
     resposta: Resposta
     uso: dict[str, int]
+    tentativas: int
     score: int
     temperatura: Temperatura
     etapa: Etapa
@@ -69,9 +71,66 @@ def _situacao(e: Estado) -> str:
     )
 
 
+TENTATIVAS = 2
+FALA_SEGURA = "Esse valor o especialista da GeniAI confirma com você. Quer que eu passe seu contato para ele?"
+DESPEDIDA = "Obrigada! Vou passar sua conversa para um especialista da GeniAI, que responde das 8h às 17h."
+_VALOR = re.compile(r"R\$\s*(\d[\d.]*\d|\d)(?:,(\d+))?")
+
+
+def precos_inventados(mensagem: str) -> list[str]:
+    return [
+        m.group(0)
+        for m in _VALOR.finditer(mensagem)
+        if int(m.group(1).replace(".", "")) not in PRECOS or (m.group(2) or "").strip("0")
+    ]
+
+
+def _despedida_com_pergunta(r: Resposta) -> bool:
+    return r.acao == "encaminhar_humano" and "?" in r.mensagem
+
+
+def problemas(r: Resposta) -> list[str]:
+    p = []
+    if errados := precos_inventados(r.mensagem):
+        p.append(f"Você citou {', '.join(errados)}, que não está na base. Use só os preços da base de conhecimento, "
+                 "do jeito que estão lá; o que não estiver na base, o especialista confirma.")
+    if _despedida_com_pergunta(r):
+        p.append("A mensagem de encaminhamento é a despedida: tire toda pergunta dela, porque depois dela o bot sai da conversa.")
+    if len(r.mensagem) > MAX_CARACTERES:
+        p.append(f"A mensagem tem {len(r.mensagem)} caracteres e o máximo é {MAX_CARACTERES}: encurte, sem perder a pergunta.")
+    return p
+
+
 def agente(e: Estado) -> Estado:
-    resposta, uso = chamar_llm([SystemMessage(SISTEMA), *map(_mensagem, e["historico"]), SystemMessage(_situacao(e))])
-    return {"resposta": resposta, "uso": uso}
+    mensagens = [SystemMessage(SISTEMA), *map(_mensagem, e["historico"]), SystemMessage(_situacao(e))]
+    if "resposta" in e:
+        correcao = " ".join(problemas(e["resposta"]))
+        mensagens += [AIMessage(e["resposta"].mensagem), SystemMessage(f"Reescreva a mensagem. {correcao}")]
+    resposta, uso = chamar_llm(mensagens)
+    anterior = e.get("uso", {})
+    return {
+        "resposta": resposta,
+        "uso": {k: anterior.get(k, 0) + v for k, v in uso.items()},
+        "tentativas": e.get("tentativas", 0) + 1,
+    }
+
+
+# Regras que o prompt pede e o modelo às vezes esquece: aqui elas valem sempre.
+def conferir(e: Estado) -> Estado:
+    r = e["resposta"]
+    if e["tentativas"] < TENTATIVAS:
+        return {}
+    # Preço errado no WhatsApp vira promessa comercial.
+    if precos_inventados(r.mensagem):
+        return {"resposta": r.model_copy(update={"mensagem": FALA_SEGURA, "acao": "continuar"})}
+    if _despedida_com_pergunta(r):
+        return {"resposta": r.model_copy(update={"mensagem": DESPEDIDA})}
+    # Só passou do tamanho: longa ainda é melhor que nenhuma.
+    return {}
+
+
+def _depois_de_conferir(e: Estado) -> str:
+    return "agente" if e["tentativas"] < TENTATIVAS and problemas(e["resposta"]) else "qualificar"
 
 
 def qualificar(e: Estado) -> Estado:
@@ -84,9 +143,11 @@ def qualificar(e: Estado) -> Estado:
 _grafo = (
     StateGraph(Estado)
     .add_node("agente", agente)
+    .add_node("conferir", conferir)
     .add_node("qualificar", qualificar)
     .add_edge(START, "agente")
-    .add_edge("agente", "qualificar")
+    .add_edge("agente", "conferir")
+    .add_conditional_edges("conferir", _depois_de_conferir, ["agente", "qualificar"])
     .add_edge("qualificar", END)
     .compile()
 )

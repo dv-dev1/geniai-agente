@@ -4,5 +4,5 @@ Disparo de mensagens em massa no WhatsApp pela API oficial do WhatsApp. Resolve 
 
 Para quem: empresas que têm uma base de clientes e querem falar com todos de uma vez.
 
-Valores: R$ 999 de implementação, uma vez, mais R$ 499 de mensalidade.
+Valores: R$ 999 de implementação, uma vez, mais R$ 499 de mensalidade. No primeiro mês, implementação e mensalidade somam R$ 1.498.
 Prazo de implementação: até um mês.
