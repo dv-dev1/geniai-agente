@@ -1,0 +1,30 @@
+name: avaliar
+# Fora do ci.yml: o LLM não é determinístico, e uma conversa que oscila não deve pintar a main de vermelho.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - cerebro/agente/prompts.py
+      - cerebro/agente/grafo.py
+      - cerebro/kb/**
+jobs:
+  avaliar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cerebro
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+      - run: uv sync
+      - name: A Gê em 6 conversas simuladas
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          uv run python -m agente.avaliar | tee saida.txt
+          status=${PIPESTATUS[0]}
+          { echo '```'; cat saida.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
