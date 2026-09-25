@@ -31,6 +31,11 @@ PERSONAS = [
 ]
 
 
+def despedida(fala: str) -> bool:
+    # Depois do encaminhamento o bot pausa: uma pergunta ali fica sem resposta.
+    return "especialista" in fala.lower() and "?" not in fala
+
+
 def fala_do_cliente(p: Persona, historico: list[Turno]) -> str:
     llm = ChatOpenAI(model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"), temperature=0.7, max_tokens=200)
     mensagens = [("system", (
@@ -59,7 +64,8 @@ def conversar(p: Persona) -> dict:
              + uso["cache"] * PRECO_USD_POR_MILHAO["cache"] + uso["saida"] * PRECO_USD_POR_MILHAO["saida"]) / 1e6
     falas = [t["texto"] for t in historico if t["autor"] == "bot"]
     ok = (msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
-          and all(len(f) <= MAX_CARACTERES and not MENU.search(f) for f in falas))
+          and all(len(f) <= MAX_CARACTERES and not MENU.search(f) for f in falas)
+          and (acao != "encaminhar_humano" or despedida(falas[-1])))
     return {"p": p, "msgs": msgs_bot, "temp": temp, "acao": acao, "custo": custo, "ok": ok, "historico": historico}
 
 

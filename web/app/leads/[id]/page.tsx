@@ -1,5 +1,6 @@
 import { revalidatePath } from 'next/cache'
 import { notFound } from 'next/navigation'
+import { linkWhatsApp, mensagemDoEspecialista } from '@/lib/abordagem.ts'
 import { sql } from '@/lib/db.ts'
 import { STATUS_COMERCIAL } from '@/lib/tipos.ts'
 
@@ -40,6 +41,16 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
             </>
           )}
         </p>
+        {telefone && (
+          <a
+            className="botao-primario inline-block px-5 py-2 text-sm text-white"
+            href={linkWhatsApp(telefone, mensagemDoEspecialista(lead, c.nome_whatsapp))}
+            target="_blank"
+            rel="noopener"
+          >
+            Chamar no WhatsApp
+          </a>
+        )}
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           {Object.entries(lead).map(([campo, valor]) => (
             <div key={campo} className="contents">
