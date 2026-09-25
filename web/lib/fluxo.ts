@@ -6,6 +6,7 @@ import type { Evento } from './zapi.ts'
 export type Deps = {
   db: Omit<typeof banco, 'sql' | 'sqlDemo' | 'comBanco' | 'ehTelefoneDemo' | 'MINUTOS_SESSAO'>
   cerebro: typeof consultarCerebro
+  acordar: () => void
   enviar: (phone: string, texto: string) => Promise<string>
   esperar: (ms: number) => Promise<void>
   debounceMs: number
@@ -29,6 +30,7 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
   if (!nova) return
   if (e.tipo === 'humano') return d.db.pausar(e.contato, HORAS_PAUSA)
 
+  d.acordar()
   await d.esperar(d.debounceMs)
   // Chegou outra mensagem durante a espera: quem responde é a espera dela.
   if ((await d.db.ultimaDoCliente(e.contato)) !== e.id) return

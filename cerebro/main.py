@@ -25,6 +25,12 @@ def exigir_token(authorization: str = Header(default="")) -> None:
         raise HTTPException(status_code=401)
 
 
+# O web chama esta rota enquanto espera o cliente parar de digitar: a partida a frio corre junto com a espera.
+@app.get("/saude")
+def saude() -> dict:
+    return {"ok": True}
+
+
 # Como dependência, o token é checado antes da validação do corpo: sem token, 401 e não 422.
 @app.post("/responder", dependencies=[Depends(exigir_token)])
 def rota_responder(pedido: Pedido) -> dict:

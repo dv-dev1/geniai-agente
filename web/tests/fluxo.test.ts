@@ -29,6 +29,7 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
   }
   const d: Deps = {
     debounceMs: 0,
+    acordar: () => {},
     esperar: () => new Promise((r) => setTimeout(r, 5)),
     enviar: async (phone, texto) => {
       enviadas.push({ phone, texto })
@@ -169,6 +170,17 @@ test('espera o cliente parar de digitar: mensagens espaçadas dentro da janela g
     f.pedidos[0].historico.map((t) => t.texto),
     ['oi', 'tudo bem?', 'quero automação'],
   )
+})
+
+test('o cérebro acorda antes da espera: a partida a frio corre junto com o debounce', async () => {
+  const f = montar()
+  const ordem: string[] = []
+  f.d.acordar = () => ordem.push('acordar')
+  f.d.esperar = async () => {
+    ordem.push('esperar')
+  }
+  await receber(cliente('1'), f.d)
+  assert.deepEqual(ordem, ['acordar', 'esperar'])
 })
 
 test('reentrega da mesma mensagem não responde de novo', async () => {

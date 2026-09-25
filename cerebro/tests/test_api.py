@@ -48,3 +48,8 @@ def test_header_fora_do_ascii_recusa_com_401(monkeypatch):
     monkeypatch.setenv("AGENTE_TOKEN", "segredo")
     r = cliente.post("/responder", json=PEDIDO, headers={"Authorization": "Bearer \xe7".encode("latin-1")})
     assert r.status_code == 401
+
+
+def test_saude_responde_sem_token_e_sem_llm(monkeypatch):
+    monkeypatch.delenv("AGENTE_TOKEN", raising=False)
+    assert cliente.get("/saude").json() == {"ok": True}

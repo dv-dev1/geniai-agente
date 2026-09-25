@@ -10,6 +10,11 @@ export type Veredito = {
   etapa: Etapa
 }
 
+// Sem await: é só para a Vercel subir o Python antes da consulta de verdade.
+export function acordarCerebro(): void {
+  fetch(`${process.env.CEREBRO_URL}/saude`, { signal: AbortSignal.timeout(10_000) }).catch(() => {})
+}
+
 export async function consultarCerebro(p: Pedido): Promise<Veredito> {
   const r = await fetch(`${process.env.CEREBRO_URL}/responder`, {
     method: 'POST',
