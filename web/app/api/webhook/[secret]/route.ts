@@ -14,14 +14,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ secret:
   if (!process.env.WEBHOOK_SECRET || !mesmoValor(secret, process.env.WEBHOOK_SECRET))
     return new Response(null, { status: 404 })
   const evento = lerEvento(await req.json().catch(() => null))
-  after(() =>
+  const demo = evento.tipo !== 'ignorar' && db.ehTelefoneDemo(evento.phone)
+  const atender = () =>
     receber(evento, {
       db,
       cerebro: consultarCerebro,
       enviar: enviarTexto,
       esperar: (ms) => new Promise((r) => setTimeout(r, ms)),
       debounceMs: Number(process.env.DEBOUNCE_MS ?? 6000),
-    }),
-  )
+    })
+  // Número de apresentação: a conversa ao vivo aparece no painel do usuário demo, junto dos leads fictícios.
+  after(() => (demo ? db.comBanco(db.sqlDemo(), atender) : atender()))
   return Response.json({ ok: true })
 }

@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { type NeonQueryFunction, neon } from '@neondatabase/serverless'
 import type { Etapa, Lead, Temperatura, Turno } from './tipos.ts'
 
@@ -24,8 +25,23 @@ export type Contato = {
 export const MINUTOS_SESSAO = 30
 
 let conexao: NeonQueryFunction<false, false> | undefined
+// Banco da requisição: o webhook troca para o fictício quando a mensagem vem de um número de apresentação.
+const bancoDaVez = new AsyncLocalStorage<NeonQueryFunction<false, false>>()
 // Preguiçoso: o next build importa este módulo sem DATABASE_URL.
-export const sql = () => (conexao ??= neon(process.env.DATABASE_URL ?? ''))
+export function sql(): NeonQueryFunction<false, false> {
+  conexao ??= neon(process.env.DATABASE_URL ?? '')
+  return bancoDaVez.getStore() ?? conexao
+}
+export const comBanco = <T>(banco: NeonQueryFunction<false, false>, f: () => T): T => bancoDaVez.run(banco, f)
+
+// Sem o nono dígito: a Z-API às vezes manda 5583 8746-8188 para quem digitou 5583 98746-8188.
+const semNonoDigito = (d: string) => (d.length === 13 && d.startsWith('55') ? d.slice(0, 4) + d.slice(5) : d)
+
+export function ehTelefoneDemo(phone: string, lista = process.env.DEMO_TELEFONES): boolean {
+  if (!lista || phone.includes('@')) return false
+  const alvo = semNonoDigito(phone.replace(/\D/g, ''))
+  return lista.split(',').some((t) => semNonoDigito(t.replace(/\D/g, '')) === alvo)
+}
 
 let conexaoDemo: NeonQueryFunction<false, false> | undefined
 export function sqlDemo() {

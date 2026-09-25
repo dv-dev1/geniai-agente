@@ -4,7 +4,7 @@ import type { Contato } from './db.ts'
 import type { Evento } from './zapi.ts'
 
 export type Deps = {
-  db: Omit<typeof banco, 'sql' | 'sqlDemo' | 'MINUTOS_SESSAO'>
+  db: Omit<typeof banco, 'sql' | 'sqlDemo' | 'comBanco' | 'ehTelefoneDemo' | 'MINUTOS_SESSAO'>
   cerebro: typeof consultarCerebro
   enviar: (phone: string, texto: string) => Promise<string>
   esperar: (ms: number) => Promise<void>
