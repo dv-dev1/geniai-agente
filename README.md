@@ -1,6 +1,66 @@
 # geniai-agente
 
-Agente de pré-vendas da GeniAI no WhatsApp: recebe o contato, faz a triagem, apresenta os serviços e encaminha o lead para um especialista, gastando o mínimo de mensagens.
-Um dashboard mostra o funil e os leads por temperatura.
+A Gê é a assistente de pré-vendas da GeniAI no WhatsApp. Ela faz a triagem, apresenta o Audiobot ou o Disparador com o preço real e passa o lead para um especialista em poucas mensagens.
+Um dashboard mostra o funil, a temperatura dos leads e a conversa de cada um, com um botão para chamar o lead no WhatsApp.
 
-Em construção. Desenho e plano em [`specs/`](specs/); perguntas abertas para a GeniAI em [`docs/perguntas-para-geniai.md`](docs/perguntas-para-geniai.md).
+## Arquitetura
+
+```
+WhatsApp ─ Z-API ─ webhook ─▶ web/ (Next.js 16, Vercel)
+                              ├─ espera 6 s o cliente parar de digitar e responde uma vez
+                              ├─ sessão de 30 min; atendente no celular pausa o bot por 24 h
+                              ├─ Postgres Neon: contatos, mensagens, lead
+                              └─ POST /responder ─▶ cerebro/ (FastAPI + LangGraph, Vercel)
+                                                    agente (gpt-4.1-mini, saída estruturada) → qualificar (score em código)
+```
+
+O cérebro não guarda estado: recebe o histórico da sessão e o lead, e devolve a mensagem, o lead atualizado, o score e a ação.
+
+## A Gê em 6 conversas simuladas
+
+`cd cerebro && uv run --env-file .env python -m agente.avaliar` põe o próprio gpt-4.1-mini no papel de 6 clientes. Cada conversa só passa com até 7 mensagens do bot, a temperatura esperada, mensagens de até 300 caracteres sem menu numerado e, quando encaminha, uma despedida sem pergunta:
+
+```
+persona               msgs  temperatura       acao                custo US$
+MEI curiosa           4     frio (frio)       encerrar            0.0031  ok
+Restaurante           4     quente (quente)   encaminhar_humano   0.0027  ok
+Gerente de varejo     4     morno (morno)     encerrar            0.0037  ok
+Candidato a vaga      1     frio (frio)       encerrar            0.0005  ok
+Só quer preço         4     quente (quente)   encaminhar_humano   0.0025  ok
+Distribuidora decidida5     quente (quente)   encaminhar_humano   0.0045  ok
+
+custo total US$ 0.0172 · média por conversa US$ 0.0029
+```
+
+## Rodar local
+
+```bash
+cd cerebro && uv sync --extra dev && uv run pytest
+uv run --env-file .env python -m agente.chat            # conversa com a Gê no terminal
+
+cd web && npm ci && vercel env pull .env.local && npm test
+npm run dev                                              # dashboard em localhost:3000, com basic auth
+```
+
+## Z-API
+
+Depois do deploy, aponte o webhook de mensagens recebidas e ligue o aviso das mensagens enviadas pelo celular, que é o que tira o bot da conversa quando um atendente responde:
+
+```bash
+cd web && set -a && source .env.local && set +a
+BASE="https://api.z-api.io/instances/$ZAPI_INSTANCE_ID/token/$ZAPI_TOKEN"
+curl -s -X PUT "$BASE/update-webhook-received" -H "Client-Token: $ZAPI_CLIENT_TOKEN" -H 'Content-Type: application/json' \
+  -d "{\"value\":\"https://geniai-web.vercel.app/api/webhook/$WEBHOOK_SECRET\"}"
+curl -s -X PUT "$BASE/update-notify-sent-by-me" -H "Client-Token: $ZAPI_CLIENT_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"notifySentByMe":true}'
+```
+
+## De onde vem o que a Gê diz
+
+Tudo sai de [`docs/respostas-geniai.md`](docs/respostas-geniai.md), resumido em [`cerebro/kb/`](cerebro/kb/), que entra inteiro no prompt. Falta confirmar com a GeniAI:
+
+- de quanto em quanto tempo os planos do Audiobot são cobrados;
+- o corte de base relevante do Disparador (`BASE_RELEVANTE = 500` em `cerebro/agente/lead.py`);
+- o plano da Vercel: o Hobby serve para demo, e uso comercial pede o Pro.
+
+Desenho e decisões em [`specs/`](specs/).
