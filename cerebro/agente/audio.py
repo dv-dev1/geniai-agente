@@ -9,10 +9,17 @@ USD_POR_MINUTO = 0.003
 TETO_BYTES = 10 * 1024 * 1024
 
 
-def baixar(url: str, cliente: httpx.Client) -> bytes:
-    # A URL chega no corpo do pedido; só https, para ninguém usar o cérebro contra a rede interna.
-    if not url.startswith("https://"):
+def _so_https(pedido: httpx.Request) -> None:
+    # A URL chega no corpo do pedido: só https, em cada redirecionamento, para ninguém usar o cérebro contra a rede interna.
+    if pedido.url.scheme != "https":
         raise ValueError("áudio só por https")
+
+
+def cliente_http(**extra) -> httpx.Client:
+    return httpx.Client(timeout=10, follow_redirects=True, event_hooks={"request": [_so_https]}, **extra)
+
+
+def baixar(url: str, cliente: httpx.Client) -> bytes:
     dados = bytearray()
     with cliente.stream("GET", url) as r:
         r.raise_for_status()
@@ -24,11 +31,11 @@ def baixar(url: str, cliente: httpx.Client) -> bytes:
 
 
 def transcrever(url: str, segundos: int) -> dict:
-    with httpx.Client(timeout=15, follow_redirects=True) as c:
+    with cliente_http() as c:
         dados = baixar(url, c)
     # A OpenAI deduz o formato pela extensão; nota de voz do WhatsApp é ogg.
     nome = PurePosixPath(urlparse(url).path).name or "audio.ogg"
     if "." not in nome:
         nome += ".ogg"
-    t = OpenAI(timeout=30, max_retries=1).audio.transcriptions.create(model=MODELO, file=(nome, dados), language="pt")
+    t = OpenAI(timeout=15, max_retries=1).audio.transcriptions.create(model=MODELO, file=(nome, dados), language="pt")
     return {"texto": t.text.strip(), "custo_usd": USD_POR_MINUTO * segundos / 60}

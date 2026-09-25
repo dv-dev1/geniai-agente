@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Pedido, Veredito } from '../lib/cerebro.ts'
-import { AVISO_ENCAMINHADO, type Deps, FALHA, PREFIXO_AUDIO, receber } from '../lib/fluxo.ts'
-import type { Lead, Turno } from '../lib/tipos.ts'
+import { AVISO_ENCAMINHADO, type Deps, FALHA, receber } from '../lib/fluxo.ts'
+import { type Lead, PREFIXO_AUDIO, TRANSCREVENDO, type Turno } from '../lib/tipos.ts'
 import type { Evento } from '../lib/zapi.ts'
 
 type Linha = {
@@ -75,7 +75,7 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
           texto: m.texto,
           respondida: m.autor !== 'cliente',
           em: relogio.agora,
-          custo: m.custo ?? 0,
+          custo: m.custo_usd ?? 0,
         })
         return true
       },
@@ -126,8 +126,11 @@ function montar(veredito: Partial<Veredito> | Error = {}) {
         )
         relogio.agora += 1
       },
-      async salvarTranscricao(id, texto, custo) {
-        Object.assign(mensagens.find((m) => m.id === id) ?? {}, { texto, custo })
+      async salvarTranscricao(id, texto, custo_usd) {
+        Object.assign(mensagens.find((m) => m.id === id) ?? {}, { texto, custo: custo_usd })
+      },
+      async transcrevendo(c) {
+        return mensagens.some((m) => m.contato === c && m.texto === TRANSCREVENDO)
       },
       async pausar(id) {
         Object.assign(contatos.get(id) ?? {}, { pausado: true })
@@ -339,6 +342,31 @@ test('áudio seguido de texto: a conversa fica na ordem em que chegou, mesmo com
     f.pedidos[0].historico.map((t) => t.texto),
     [`${PREFIXO_AUDIO}meu restaurante`, 'é em Recife'],
   )
+})
+
+test('texto logo depois de um áudio lento: a Gê espera a transcrição antes de responder', async () => {
+  const f = montar()
+  let ouvir = () => {}
+  f.d.transcrever = () => new Promise((r) => (ouvir = () => r({ texto: 'meu restaurante', custo_usd: 0 })))
+  const p1 = receber(audio('1'), f.d)
+  await passo()
+  const p2 = receber(cliente('2', 'é em Recife'), f.d)
+  // A espera do texto já acabou e ele está pronto para responder; só então a transcrição chega.
+  await new Promise((r) => setTimeout(r, 40))
+  ouvir()
+  await Promise.all([p1, p2])
+  assert.equal(f.enviadas.length, 1)
+  assert.deepEqual(
+    f.pedidos[0].historico.map((t) => t.texto),
+    [`${PREFIXO_AUDIO}meu restaurante`, 'é em Recife'],
+  )
+})
+
+test('áudio mudo: vira [áudio], e o que a OpenAI cobrou fica gravado', async () => {
+  const f = montar()
+  f.d.transcrever = async () => ({ texto: '', custo_usd: 0.0015 })
+  await receber(audio('1'), f.d)
+  assert.deepEqual([f.mensagens[0].texto, f.mensagens[0].custo], ['[áudio]', 0.0015])
 })
 
 test('transcrição falhou: fica [áudio], e a Gê ainda responde (pedindo para escrever)', async () => {

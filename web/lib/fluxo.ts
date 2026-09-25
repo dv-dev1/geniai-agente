@@ -1,7 +1,7 @@
 import type { consultarCerebro, transcrever, Veredito } from './cerebro.ts'
 import type * as banco from './db.ts'
 import type { Contato } from './db.ts'
-import type { Audio } from './tipos.ts'
+import { AUDIO_SEM_TEXTO, type Audio, PREFIXO_AUDIO, TRANSCREVENDO } from './tipos.ts'
 import type { Evento } from './zapi.ts'
 
 export type Deps = {
@@ -18,7 +18,7 @@ export const HORAS_PAUSA = 24
 export const FALHA =
   'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
 export const AVISO_ENCAMINHADO = 'Sua conversa já está com um especialista da GeniAI; ele responde das 8h às 17h.'
-export const PREFIXO_AUDIO = '[áudio] '
+const ESPERA_TRANSCRICAO_S = 30
 
 export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'ignorar') return
@@ -28,7 +28,7 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
     phone: e.phone,
     nome: e.tipo === 'cliente' ? e.nome : null,
     autor: e.tipo,
-    texto: e.texto,
+    texto: e.tipo === 'cliente' && e.audio ? TRANSCREVENDO : e.texto,
   })
   if (!nova) return
   if (e.tipo === 'humano') return d.db.pausar(e.contato, HORAS_PAUSA)
@@ -41,17 +41,22 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
   await atender(e.contato, d)
 }
 
-// Na falha fica o "[áudio]" já gravado, e a Gê pede para a pessoa escrever.
+// Na falha ou no áudio mudo fica "[áudio]", e a Gê pede para a pessoa escrever.
 async function ouvir(id: string, audio: Audio, d: Deps): Promise<void> {
-  try {
-    const t = await d.transcrever(audio)
-    if (t.texto) await d.db.salvarTranscricao(id, PREFIXO_AUDIO + t.texto, t.custo_usd)
-  } catch (erro) {
+  const t = await d.transcrever(audio).catch((erro) => {
     console.error('transcrição falhou', id, erro)
-  }
+    return { texto: '', custo_usd: 0 }
+  })
+  await d.db.salvarTranscricao(id, t.texto ? PREFIXO_AUDIO + t.texto : AUDIO_SEM_TEXTO, t.custo_usd)
+}
+
+// Um texto que chega logo depois de um áudio não pode ser respondido antes de o áudio virar texto.
+async function esperarTranscricoes(contatoId: string, d: Deps): Promise<void> {
+  for (let s = 0; s < ESPERA_TRANSCRICAO_S && (await d.db.transcrevendo(contatoId)); s++) await d.esperar(1000)
 }
 
 async function atender(contatoId: string, d: Deps): Promise<void> {
+  await esperarTranscricoes(contatoId, d)
   const c = await d.db.carregarContato(contatoId)
   if (c.pausado) {
     // O atendente já tratou estas mensagens; sem marcar, a próxima sessão do bot as leria de novo.
@@ -80,7 +85,7 @@ async function atender(contatoId: string, d: Deps): Promise<void> {
   const texto = v?.mensagem ?? FALHA
   // ponytail: se o send-text falhar, as mensagens já foram reivindicadas e ficam sem resposta; reenfileirar quando a Z-API falhar de verdade.
   const id = await d.enviar(c.phone, texto)
-  await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto, custo: v?.custo_usd })
+  await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto, custo_usd: v?.custo_usd })
   // A falha também promete um especialista; o painel precisa mostrar esse lead como encaminhado.
   if (v?.acao !== 'continuar') await d.db.encerrar(contatoId, !v || v.acao === 'encaminhar_humano')
 }

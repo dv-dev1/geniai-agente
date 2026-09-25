@@ -52,7 +52,7 @@ export default async function VisaoGeral() {
         <Cartao rotulo="Mensagens da Gê por conversa" valor={msgsPorConversa} />
         <Cartao rotulo={`Custo de IA por conversa · ${dolar(m.ia_mes)} no mês`} valor={iaPorConversa} />
         <Cartao
-          largo
+          largoNoCelular
           rotulo={`Custo simulado na API oficial (mês) · ${m.empresa_mes} msgs × R$ 0,035`}
           valor={custoMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         />
@@ -137,21 +137,20 @@ export default async function VisaoGeral() {
 const dolar = (v: number, casas = 2) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'USD', minimumFractionDigits: casas })
 
-// largo: o quinto cartão ocupa a linha inteira no celular, em vez de ficar sozinho numa coluna.
 function Cartao({
   rotulo,
   valor,
   destaque,
-  largo,
+  largoNoCelular,
 }: {
   rotulo: string
   valor: string | number
   destaque?: boolean
-  largo?: boolean
+  largoNoCelular?: boolean
 }) {
   return (
     <div
-      className={`cartao surgir p-4 ${destaque ? 'border-quente/40' : ''} ${largo ? 'col-span-2 sm:col-span-1' : ''}`}
+      className={`cartao surgir p-4 ${destaque ? 'border-quente/40' : ''} ${largoNoCelular ? 'col-span-2 sm:col-span-1' : ''}`}
     >
       <div className={`text-2xl font-normal tracking-[-0.05em] lg:text-3xl ${destaque ? 'text-quente' : 'text-white'}`}>
         {valor}

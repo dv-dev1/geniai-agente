@@ -2,7 +2,7 @@
 export default function Carregando() {
   const bloco = 'rounded-2xl bg-superficie motion-safe:animate-pulse'
   return (
-    <div className="space-y-8" role="status" aria-label="Carregando">
+    <output className="block space-y-8" aria-label="Carregando">
       <div className="space-y-3">
         <div className="h-3 w-32 rounded bg-superficie" />
         <div className="h-10 w-56 rounded-lg bg-superficie motion-safe:animate-pulse" />
@@ -13,6 +13,6 @@ export default function Carregando() {
         ))}
       </div>
       <div className={`h-72 ${bloco}`} />
-    </div>
+    </output>
   )
 }

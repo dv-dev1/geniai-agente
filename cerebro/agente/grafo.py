@@ -1,5 +1,4 @@
 import os
-import re
 from functools import cache
 from typing import Literal
 
@@ -10,7 +9,7 @@ from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 from .lead import Etapa, Lead, Temperatura, etapa, mesclar, pontuar, temperatura
-from .prompts import MAX_CARACTERES, MAX_MENSAGENS_BOT, PRECOS, SISTEMA
+from .prompts import HORARIO, MAX_CARACTERES, MAX_MENSAGENS_BOT, PRECOS, SISTEMA, valores_em_reais
 
 
 class Turno(TypedDict):
@@ -32,11 +31,13 @@ class Estado(TypedDict, total=False):
     resposta: Resposta
     uso: dict[str, int]
     tentativas: int
+    problemas: list[str]
     score: int
     temperatura: Temperatura
     etapa: Etapa
 
 
+# ponytail: preço do gpt-4.1-mini; trocar OPENAI_MODEL pede trocar esta tabela.
 PRECO_USD_POR_MILHAO = {"entrada": 0.40, "cache": 0.10, "saida": 1.60}
 
 
@@ -80,17 +81,16 @@ def _situacao(e: Estado) -> str:
 
 
 TENTATIVAS = 2
-FALA_SEGURA = "Esse valor o especialista da GeniAI confirma com você. Quer que eu passe seu contato para ele?"
-DESPEDIDA = "Obrigada! Vou passar sua conversa para um especialista da GeniAI, que responde das 8h às 17h."
-_VALOR = re.compile(r"R\$\s*(\d[\d.]*\d|\d)(?:,(\d+))?")
+# Por ação: quem pediu humano segue encaminhado, quem encerrou segue encerrado.
+FALA_SEGURA = {
+    "continuar": "Esse valor o especialista da GeniAI confirma com você. Quer que eu passe seu contato para ele?",
+    "encaminhar_humano": f"Obrigada! Vou passar sua conversa para um especialista da GeniAI, que responde {HORARIO}.",
+    "encerrar": "Obrigada pelo contato! Quando quiser retomar, é só chamar por aqui.",
+}
 
 
 def precos_inventados(mensagem: str) -> list[str]:
-    return [
-        m.group(0)
-        for m in _VALOR.finditer(mensagem)
-        if int(m.group(1).replace(".", "")) not in PRECOS or (m.group(2) or "").strip("0")
-    ]
+    return [trecho for trecho, valor in valores_em_reais(mensagem) if valor not in PRECOS]
 
 
 def _despedida_com_pergunta(r: Resposta) -> bool:
@@ -111,8 +111,8 @@ def problemas(r: Resposta) -> list[str]:
 
 def agente(e: Estado) -> Estado:
     mensagens = [SystemMessage(SISTEMA), *map(_mensagem, e["historico"]), SystemMessage(_situacao(e))]
-    if "resposta" in e:
-        correcao = " ".join(problemas(e["resposta"]))
+    if e.get("problemas"):
+        correcao = " ".join(e["problemas"])
         mensagens += [AIMessage(e["resposta"].mensagem), SystemMessage(f"Reescreva a mensagem. {correcao}")]
     resposta, uso = chamar_llm(mensagens)
     anterior = e.get("uso", {})
@@ -126,19 +126,18 @@ def agente(e: Estado) -> Estado:
 # Regras que o prompt pede e o modelo às vezes esquece: aqui elas valem sempre.
 def conferir(e: Estado) -> Estado:
     r = e["resposta"]
-    if e["tentativas"] < TENTATIVAS:
-        return {}
-    # Preço errado no WhatsApp vira promessa comercial.
-    if precos_inventados(r.mensagem):
-        return {"resposta": r.model_copy(update={"mensagem": FALA_SEGURA, "acao": "continuar"})}
-    if _despedida_com_pergunta(r):
-        return {"resposta": r.model_copy(update={"mensagem": DESPEDIDA})}
+    p = problemas(r)
+    if not p or e["tentativas"] < TENTATIVAS:
+        return {"problemas": p}
+    # Preço errado vira promessa comercial, e pergunta na despedida fica sem resposta: sai a fala segura.
+    if precos_inventados(r.mensagem) or _despedida_com_pergunta(r):
+        return {"problemas": [], "resposta": r.model_copy(update={"mensagem": FALA_SEGURA[r.acao]})}
     # Só passou do tamanho: longa ainda é melhor que nenhuma.
-    return {}
+    return {"problemas": []}
 
 
 def _depois_de_conferir(e: Estado) -> str:
-    return "agente" if e["tentativas"] < TENTATIVAS and problemas(e["resposta"]) else "qualificar"
+    return "agente" if e["problemas"] else "qualificar"
 
 
 def qualificar(e: Estado) -> Estado:

@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { type NeonQueryFunction, neon } from '@neondatabase/serverless'
-import type { Etapa, Lead, Temperatura, Turno } from './tipos.ts'
+import { type Etapa, type Lead, type Temperatura, TRANSCREVENDO, type Turno } from './tipos.ts'
 
 export type NovaMensagem = {
   id: string
@@ -9,7 +9,7 @@ export type NovaMensagem = {
   nome?: string | null
   autor: Turno['autor']
   texto: string
-  custo?: number
+  custo_usd?: number
 }
 export type Contato = {
   id: string
@@ -59,13 +59,18 @@ export async function registrarMensagem(m: NovaMensagem): Promise<boolean> {
       phone = case when excluded.phone like '%@lid' then contatos.phone else excluded.phone end,
       nome_whatsapp = coalesce(excluded.nome_whatsapp, contatos.nome_whatsapp)`
   const r = await sql()`insert into mensagens (id, contato_id, autor, texto, respondida, custo_usd)
-    values (${m.id}, ${m.contato}, ${m.autor}, ${m.texto}, ${m.autor !== 'cliente'}, ${m.custo ?? 0})
+    values (${m.id}, ${m.contato}, ${m.autor}, ${m.texto}, ${m.autor !== 'cliente'}, ${m.custo_usd ?? 0})
     on conflict (id) do nothing returning id`
   return r.length > 0
 }
 
-export async function salvarTranscricao(id: string, texto: string, custo: number): Promise<void> {
-  await sql()`update mensagens set texto = ${texto}, custo_usd = ${custo} where id = ${id}`
+export async function salvarTranscricao(id: string, texto: string, custo_usd: number): Promise<void> {
+  await sql()`update mensagens set texto = ${texto}, custo_usd = ${custo_usd} where id = ${id}`
+}
+
+export async function transcrevendo(contato: string): Promise<boolean> {
+  const r = await sql()`select 1 from mensagens where contato_id = ${contato} and texto = ${TRANSCREVENDO} limit 1`
+  return r.length > 0
 }
 
 export async function ultimaDoCliente(contato: string): Promise<string | null> {

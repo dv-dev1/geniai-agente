@@ -67,3 +67,10 @@ def test_transcrever_devolve_texto_e_custo(monkeypatch):
 def test_saude_responde_sem_token_e_sem_llm(monkeypatch):
     monkeypatch.delenv("AGENTE_TOKEN", raising=False)
     assert cliente.get("/saude").json() == {"ok": True}
+
+
+def test_transcrever_recusa_duracao_negativa(monkeypatch):
+    monkeypatch.setenv("AGENTE_TOKEN", "segredo")
+    r = cliente.post("/transcrever", json={"url": "https://z/a.ogg", "segundos": -5},
+                     headers={"Authorization": "Bearer segredo"})
+    assert r.status_code == 422

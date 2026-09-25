@@ -1,4 +1,4 @@
-import type { Audio } from './tipos.ts'
+import { AUDIO_SEM_TEXTO, type Audio } from './tipos.ts'
 
 export type Evento =
   | {
@@ -44,7 +44,7 @@ export function lerEvento(body: unknown): Evento {
   const contato = p.chatLid || p.phone
   if (!contato) return IGNORAR
   const phone = p.phone ?? contato
-  const texto = p.text?.message || p.image?.caption || (p.audio ? '[áudio]' : null)
+  const texto = p.text?.message || p.image?.caption || (p.audio ? AUDIO_SEM_TEXTO : null)
 
   if (p.fromMe) {
     // fromApi marca o eco do send-text do próprio bot; sem ele, alguém respondeu pelo celular.

@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 const SEGUNDOS = 5
 
 // Polling, não websocket: a Vercel é serverless, e 5 s bastam para a conversa aparecer enquanto acontece.
+// ponytail: aba visível mantém o Neon acordado; parar depois de alguns minutos sem uso se a conta de compute pesar.
 export function AoVivo() {
   const router = useRouter()
   useEffect(() => {

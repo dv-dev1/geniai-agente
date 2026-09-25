@@ -63,6 +63,7 @@ def responder_com(monkeypatch, falas: list[str], acao: str = "continuar"):
 def test_precos_da_base_passam_e_os_de_fora_nao():
     assert grafo.precos_inventados("O Padrão sai por *R$ 399,00*, o Inicial por R$299.") == []
     assert grafo.precos_inventados("R$ 999 de implementação mais R$ 499 por mês.") == []
+    assert grafo.precos_inventados("Com ponto decimal: R$ 399.00.") == []
     assert grafo.precos_inventados("Fica R$ 199 ou R$ 299,90.") == ["R$ 199", "R$ 299,90"]
     # A soma do primeiro mês do Disparador está na base; uma soma que a base não tem é preço inventado.
     assert grafo.precos_inventados("No total, R$ 1.498 no primeiro mês.") == []
@@ -86,8 +87,12 @@ def test_preco_inventado_faz_a_ge_reescrever_uma_vez(monkeypatch):
 def test_preco_inventado_duas_vezes_vira_fala_segura(monkeypatch):
     r, chamadas = responder_com(monkeypatch, ["Sai por R$ 199.", "Sai por R$ 1.298."])
     assert len(chamadas) == 2
-    assert r["resposta"].mensagem == grafo.FALA_SEGURA
-    assert r["resposta"].acao == "continuar"
+    assert (r["resposta"].mensagem, r["resposta"].acao) == (grafo.FALA_SEGURA["continuar"], "continuar")
+
+
+def test_fala_segura_nao_desfaz_o_encaminhamento(monkeypatch):
+    r, _ = responder_com(monkeypatch, ["Te passo, custa R$ 199.", "Te passo, custa R$ 199."], "encaminhar_humano")
+    assert (r["resposta"].mensagem, r["resposta"].acao) == (grafo.FALA_SEGURA["encaminhar_humano"], "encaminhar_humano")
 
 
 def test_despedida_com_pergunta_e_reescrita(monkeypatch):
@@ -100,7 +105,7 @@ def test_despedida_com_pergunta_e_reescrita(monkeypatch):
 
 def test_despedida_com_pergunta_duas_vezes_vira_despedida_fixa(monkeypatch):
     r, _ = responder_com(monkeypatch, ["Posso passar?", "Tudo certo?"], "encaminhar_humano")
-    assert (r["resposta"].mensagem, r["resposta"].acao) == (grafo.DESPEDIDA, "encaminhar_humano")
+    assert (r["resposta"].mensagem, r["resposta"].acao) == (grafo.FALA_SEGURA["encaminhar_humano"], "encaminhar_humano")
 
 
 def test_pergunta_fora_da_despedida_e_normal(monkeypatch):

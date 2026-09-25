@@ -5,8 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - cerebro/agente/prompts.py
-      - cerebro/agente/grafo.py
+      - cerebro/agente/**
       - cerebro/kb/**
 jobs:
   avaliar:

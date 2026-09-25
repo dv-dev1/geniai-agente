@@ -2,7 +2,7 @@ import os
 import secrets
 
 from fastapi import Depends, FastAPI, Header, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from agente.audio import transcrever
 from agente.grafo import Turno, custo_usd, responder
@@ -50,7 +50,7 @@ def rota_responder(pedido: Pedido) -> dict:
 
 class PedidoAudio(BaseModel):
     url: str
-    segundos: int = 0
+    segundos: int = Field(0, ge=0)
 
 
 @app.post("/transcrever", dependencies=[Depends(exigir_token)])

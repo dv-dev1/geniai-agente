@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { Pool } from '@neondatabase/serverless'
-import { PREFIXO_AUDIO } from '../lib/fluxo.ts'
-import { ETAPAS, type Etapa } from '../lib/tipos.ts'
+import { ETAPAS, type Etapa, falaDoAudio, PREFIXO_AUDIO } from '../lib/tipos.ts'
 
 // Dados fictícios para apresentação. Só roda no banco geniai_demo: produção guarda leads reais.
 const pool = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -357,7 +356,7 @@ for (let i = 0; i < NOMES.length; i++) {
   )
   for (const [j, [autor, texto, min]] of falas.entries()) {
     // Na faixa do que o avaliar mede: US$ 0,0006 a 0,0010 por resposta; um áudio curto transcrito, US$ 0,0004.
-    const custo = autor === 'bot' ? 0.0006 + ((i + j) % 5) * 0.0001 : texto.startsWith(PREFIXO_AUDIO) ? 0.0004 : 0
+    const custo = autor === 'bot' ? 0.0006 + ((i + j) % 5) * 0.0001 : falaDoAudio(texto) !== null ? 0.0004 : 0
     await db.query(
       `insert into mensagens (id, contato_id, autor, texto, respondida, criado_em, custo_usd)
        values ($1, $2, $3, $4, true, $5, $6)`,
