@@ -37,6 +37,11 @@ def despedida(fala: str) -> bool:
     return "especialista" in f and "?" not in f and "até já" not in f and "instante" not in f
 
 
+def completo(lead: Lead) -> bool:
+    # O especialista liga sabendo com quem fala e o que a pessoa quer; sem isso, a conversa recomeça do zero.
+    return bool(lead.nome and lead.empresa and lead.dor and lead.servicos and lead.resumo)
+
+
 def fala_do_cliente(p: Persona, historico: list[Turno]) -> str:
     llm = ChatOpenAI(model=os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"), temperature=0.7, max_tokens=200)
     mensagens = [("system", (
@@ -66,7 +71,7 @@ def conversar(p: Persona) -> dict:
     falas = [t["texto"] for t in historico if t["autor"] == "bot"]
     ok = (msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
           and all(len(f) <= MAX_CARACTERES and not MENU.search(f) for f in falas)
-          and (acao != "encaminhar_humano" or despedida(falas[-1])))
+          and (acao != "encaminhar_humano" or (despedida(falas[-1]) and completo(lead))))
     return {"p": p, "msgs": msgs_bot, "temp": temp, "acao": acao, "custo": custo, "ok": ok, "historico": historico}
 
 

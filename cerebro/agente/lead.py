@@ -16,7 +16,6 @@ class Lead(BaseModel):
     # Sem default de propósito: o structured output strict da OpenAI exige todo campo presente.
     nome: str | None
     empresa: str | None
-    segmento: str | None
     cidade: str | None
     porte: Literal["MEI", "ME", "EPP", "media", "grande"] | None
     colaboradores: int | None
@@ -29,6 +28,7 @@ class Lead(BaseModel):
     telefone: str | None
     pediu_contato: bool | None
     fora_do_perfil: bool | None
+    resumo: str | None
 
     @classmethod
     def vazio(cls) -> "Lead":
@@ -89,6 +89,6 @@ def etapa(lead: Lead) -> Etapa:
         return "interesse"
     if lead.dor:
         return "apresentacao"
-    if lead.nome or lead.empresa or lead.segmento or lead.porte or lead.colaboradores is not None:
+    if lead.nome or lead.empresa or lead.porte or lead.colaboradores is not None:
         return "triagem"
     return "novo"
