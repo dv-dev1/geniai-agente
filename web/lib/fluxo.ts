@@ -1,9 +1,10 @@
 import type { consultarCerebro, Veredito } from './cerebro.ts'
 import type * as banco from './db.ts'
+import type { Contato } from './db.ts'
 import type { Evento } from './zapi.ts'
 
 export type Deps = {
-  db: Omit<typeof banco, 'sql'>
+  db: Omit<typeof banco, 'sql' | 'MINUTOS_SESSAO'>
   cerebro: typeof consultarCerebro
   enviar: (phone: string, texto: string) => Promise<string>
   esperar: (ms: number) => Promise<void>
@@ -13,6 +14,7 @@ export type Deps = {
 export const HORAS_PAUSA = 24
 export const FALHA =
   'Tive um problema técnico aqui. Um especialista da GeniAI vai continuar seu atendimento; o time responde das 8h às 17h.'
+export const AVISO_ENCAMINHADO = 'Sua conversa já está com um especialista da GeniAI; ele responde das 8h às 17h.'
 
 export async function receber(e: Evento, d: Deps): Promise<void> {
   if (e.tipo === 'ignorar') return
@@ -36,15 +38,17 @@ export async function receber(e: Evento, d: Deps): Promise<void> {
 async function atender(contatoId: string, d: Deps): Promise<void> {
   const c = await d.db.carregarContato(contatoId)
   if (c.pausado) return
+  if (c.ociosa) await d.db.abrirSessao(contatoId)
   // Reivindicação atômica: se outra execução já pegou estas mensagens, esta desiste.
   if ((await d.db.reivindicarPendentes(contatoId)) === 0) return
+  if (c.encerrada && !c.ociosa) return avisarEncaminhado(c, d)
 
   let v: Veredito | null = null
   try {
     v = await d.cerebro({
       historico: await d.db.historico(contatoId),
       lead: c.lead,
-      msgs_bot: c.msgsBot,
+      msgs_bot: c.ociosa ? 0 : c.msgsBot,
       telefone_conhecido: !c.phone.endsWith('@lid'),
     })
   } catch (erro) {
@@ -56,5 +60,12 @@ async function atender(contatoId: string, d: Deps): Promise<void> {
   const id = await d.enviar(c.phone, texto)
   await d.db.registrarMensagem({ id, contato: contatoId, phone: c.phone, autor: 'bot', texto })
   if (v) await d.db.salvarLead(contatoId, v.lead, v.score, v.temperatura, v.etapa)
-  if (v?.acao !== 'continuar') await d.db.pausar(contatoId, HORAS_PAUSA)
+  if (v?.acao !== 'continuar') await d.db.encerrar(contatoId)
+}
+
+// Uma vez por sessão: o cliente sabe que foi ouvido; mais que isso só gastaria mensagem paga.
+async function avisarEncaminhado(c: Contato, d: Deps): Promise<void> {
+  if (!c.encaminhado || c.avisada) return
+  const id = await d.enviar(c.phone, AVISO_ENCAMINHADO)
+  await d.db.registrarMensagem({ id, contato: c.id, phone: c.phone, autor: 'bot', texto: AVISO_ENCAMINHADO })
 }

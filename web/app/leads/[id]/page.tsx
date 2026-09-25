@@ -1,10 +1,14 @@
 import { revalidatePath } from 'next/cache'
 import { notFound } from 'next/navigation'
+import { Fragment } from 'react'
 import { linkWhatsApp, mensagemDoEspecialista } from '@/lib/abordagem.ts'
-import { sql } from '@/lib/db.ts'
+import { MINUTOS_SESSAO, sql } from '@/lib/db.ts'
 import { STATUS_COMERCIAL } from '@/lib/tipos.ts'
 
 export const dynamic = 'force-dynamic'
+
+const novaSessao = (antes: string, depois: string) =>
+  new Date(depois).getTime() - new Date(antes).getTime() > MINUTOS_SESSAO * 60_000
 
 async function mudarStatus(form: FormData) {
   'use server'
@@ -79,16 +83,22 @@ export default async function FichaLead({ params }: { params: Promise<{ id: stri
       </section>
       <section className="space-y-2">
         <h2 className="font-medium">Conversa</h2>
-        {mensagens.map((m) => (
-          <div
-            key={m.id}
-            className={`max-w-[85%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${
-              m.autor === 'cliente' ? 'cartao' : 'ml-auto border border-ciano/30 bg-ciano/10'
-            }`}
-          >
-            <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">{m.autor}</div>
-            {m.texto}
-          </div>
+        {mensagens.map((m, i) => (
+          <Fragment key={m.id}>
+            {i > 0 && novaSessao(mensagens[i - 1].criado_em, m.criado_em) && (
+              <div className="py-2 text-center text-[10px] uppercase tracking-wide text-suave">
+                nova sessão · {new Date(m.criado_em).toLocaleString('pt-BR', { timeZone: 'America/Fortaleza' })}
+              </div>
+            )}
+            <div
+              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl p-3 text-sm ${
+                m.autor === 'cliente' ? 'cartao' : 'ml-auto border border-ciano/30 bg-ciano/10'
+              }`}
+            >
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-suave">{m.autor}</div>
+              {m.texto}
+            </div>
+          </Fragment>
         ))}
       </section>
     </div>
