@@ -29,7 +29,7 @@ Manual, no WhatsApp real: mandar "oi", "tudo bem?" e "queria saber de automaçã
 ## Fora de escopo
 
 - Transcrição de áudio (o bot pede para o cliente escrever), leitura de imagem ou documento.
-- Botões e listas interativas: a própria Z-API documenta que são instáveis, então as opções vão numeradas em texto.
+- Botões e listas interativas: a própria Z-API documenta que são instáveis. A Gê pergunta em texto corrido, sem menu numerado (`specs/2026-09-24-ge-tom-e-custo.md`).
 - Follow-up e templates fora da janela de 24 h, notificação de lead quente, integração com CRM, rastreio de anúncio Click-to-WhatsApp.
 - RAG ou banco vetorial: a base de conhecimento cabe inteira no prompt.
 - MCP da Z-API no agente: ele só envia mensagens e colocaria uma chamada de ferramenta do LLM no meio de cada resposta. O `send-text` direto resolve.

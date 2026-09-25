@@ -3,7 +3,6 @@ import { ETAPAS } from '@/lib/tipos.ts'
 
 export const dynamic = 'force-dynamic'
 
-const FRANQUIA_META = 1000
 const PRECO_MENSAGEM_META = 0.035
 
 export default async function VisaoGeral() {
@@ -29,7 +28,8 @@ export default async function VisaoGeral() {
   const maxEtapa = Math.max(1, ...Object.values(porEtapa))
   const maxDia = Math.max(1, ...dias.map((d) => d.n as number))
   const msgsPorConversa = m.conversas ? (m.bot / m.conversas).toFixed(1) : '—'
-  const custoMeta = Math.max(0, m.empresa_mes - FRANQUIA_META) * PRECO_MENSAGEM_META
+  // Simulação: a GeniAI não usa a API oficial aqui, e a franquia grátis fica de fora para o número mostrar o custo real das mensagens.
+  const custoMeta = m.empresa_mes * PRECO_MENSAGEM_META
 
   return (
     <div className="space-y-8">
@@ -40,7 +40,7 @@ export default async function VisaoGeral() {
         <Cartao rotulo="Quentes" valor={t.quente} destaque />
         <Cartao rotulo="Msgs do bot por conversa" valor={msgsPorConversa} />
         <Cartao
-          rotulo="Custo equivalente na API oficial (mês)"
+          rotulo={`Custo simulado na API oficial (mês) · ${m.empresa_mes} msgs × R$ 0,035`}
           valor={custoMeta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
         />
       </section>

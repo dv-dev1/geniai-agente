@@ -56,6 +56,9 @@ def pontuar(lead: Lead) -> int:
     s = 0
     if lead.porte:
         s += PONTOS_PORTE[lead.porte]
+    elif lead.colaboradores is not None:
+        # Quem diz "80 funcionários" raramente diz o porte; faixas do Sebrae para comércio e serviços.
+        s += PONTOS_PORTE["ME" if lead.colaboradores < 10 else "EPP"]
     if lead.colaboradores is not None:
         s += 10 if lead.colaboradores >= 10 else 5
     if lead.dor:

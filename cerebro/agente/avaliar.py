@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -7,9 +8,10 @@ from langchain_openai import ChatOpenAI
 
 from .grafo import Turno, responder
 from .lead import Lead
-from .prompts import MAX_MENSAGENS_BOT
+from .prompts import MAX_CARACTERES, MAX_MENSAGENS_BOT
 
 PRECO_USD_POR_MILHAO = {"entrada": 0.40, "cache": 0.10, "saida": 1.60}
+MENU = re.compile(r"^\s*\d+[).]", re.MULTILINE)
 
 
 @dataclass
@@ -20,7 +22,7 @@ class Persona:
 
 
 PERSONAS = [
-    Persona("MEI curiosa", "frio", "Você é a Carla, manicure, MEI, trabalha sozinha. Viu um post da GeniAI e ficou curiosa, mas não tem um problema específico, não tem pressa e não quer falar com especialista agora (\"vou pensar\")."),
+    Persona("MEI curiosa", "frio", "Você é a Carla, manicure, MEI, trabalha sozinha. Viu um post da GeniAI e ficou curiosa, mas não tem um problema específico nem quer contratar nada (se perguntarem o que precisa, diz que nada por enquanto), não tem pressa e não quer falar com especialista agora (\"vou pensar\")."),
     Persona("Restaurante", "quente", "Você é o Marcos, dono de um restaurante em Recife (ME, 12 funcionários). Não sabe o que acontece na cozinha quando não está lá e quer acompanhar umas 8 horas por dia. Quer começar no mês que vem e quer falar com um especialista."),
     Persona("Gerente de varejo", "morno", "Você é a Paula, gerente de marketing de uma rede de lojas média (80 funcionários). Hoje avisa os clientes das promoções um a um no WhatsApp. Não sabe quantos contatos tem na base, não decide sozinha, depende da diretoria, não tem pressa e agora não quer marcar conversa: prefere pensar."),
     Persona("Candidato a vaga", "frio", "Você é o Lucas, desenvolvedor, e quer saber se a GeniAI está contratando. Você não é cliente."),
@@ -55,7 +57,9 @@ def conversar(p: Persona) -> dict:
         temp = r["temperatura"]
     custo = ((uso["entrada"] - uso["cache"]) * PRECO_USD_POR_MILHAO["entrada"]
              + uso["cache"] * PRECO_USD_POR_MILHAO["cache"] + uso["saida"] * PRECO_USD_POR_MILHAO["saida"]) / 1e6
-    ok = msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
+    falas = [t["texto"] for t in historico if t["autor"] == "bot"]
+    ok = (msgs_bot <= MAX_MENSAGENS_BOT and temp == p.esperado and acao != "continuar"
+          and all(len(f) <= MAX_CARACTERES and not MENU.search(f) for f in falas))
     return {"p": p, "msgs": msgs_bot, "temp": temp, "acao": acao, "custo": custo, "ok": ok, "historico": historico}
 
 

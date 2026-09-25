@@ -77,3 +77,9 @@ def test_de_dict_ignora_chave_desconhecida_do_banco():
 
 def test_false_conhecido_de_pediu_contato_nao_vira_none():
     assert mesclar(lead(pediu_contato=False), Lead.vazio()).pediu_contato is False
+
+
+def test_sem_porte_informado_o_numero_de_pessoas_vale_como_porte():
+    assert pontuar(lead(colaboradores=80)) == 25
+    assert pontuar(lead(colaboradores=5)) == 15
+    assert pontuar(lead(porte="MEI", colaboradores=1)) == 10
