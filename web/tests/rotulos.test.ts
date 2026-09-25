@@ -7,8 +7,8 @@ test('funil conta quem chegou pelo menos até a etapa e a conversão sobre a ant
   assert.deepEqual(
     f.degraus.map((d) => [d.rotulo, d.n, d.conversao]),
     [
-      ['Primeiro contato', 10, null],
-      ['Identificado', 8, 80],
+      ['Primeiro contato', 14, 100],
+      ['Identificado', 8, 57],
       ['Necessidade mapeada', 5, 63],
       ['Produto apresentado', 4, 80],
       ['Com especialista', 2, 50],
@@ -20,7 +20,7 @@ test('funil conta quem chegou pelo menos até a etapa e a conversão sobre a ant
 test('funil vazio não divide por zero', () => {
   assert.deepEqual(
     funil({}).degraus.map((d) => d.conversao),
-    [null, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0],
   )
 })
 

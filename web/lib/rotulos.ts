@@ -39,7 +39,7 @@ export function haQuanto(data: string | Date, agora = Date.now()): string {
   return `há ${Math.round(min / (24 * 60))} d`
 }
 
-export type Degrau = { rotulo: string; n: number; conversao: number | null }
+export type Degrau = { rotulo: string; n: number; conversao: number }
 
 // Etapa guarda o ponto mais longe a que o lead chegou, então quem está adiante também passou pelas anteriores.
 export function funil(porEtapa: Record<string, number>): { degraus: Degrau[]; foraDoPerfil: number } {
@@ -50,10 +50,11 @@ export function funil(porEtapa: Record<string, number>): { degraus: Degrau[]; fo
     acumulado += porEtapa[escada[i]] ?? 0
     n[i] = acumulado
   }
-  const degraus = escada.map((e, i) => ({
-    rotulo: ETAPA[e],
-    n: n[i],
-    conversao: i === 0 ? null : n[i - 1] ? Math.round((n[i] / n[i - 1]) * 100) : 0,
-  }))
+  // Fora do perfil também fez o primeiro contato: sem ele o topo do funil não bate com o total de leads.
+  n[0] += porEtapa.perdido ?? 0
+  const degraus = escada.map((e, i) => {
+    const base = n[Math.max(0, i - 1)]
+    return { rotulo: ETAPA[e], n: n[i], conversao: base ? Math.round((n[i] / base) * 100) : 0 }
+  })
   return { degraus, foraDoPerfil: porEtapa.perdido ?? 0 }
 }

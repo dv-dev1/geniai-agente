@@ -52,7 +52,9 @@ export default async function VisaoGeral() {
       <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
         <section className="cartao surgir p-5">
           <h2 className="font-medium">Funil de atendimento</h2>
-          <p className="mb-5 text-xs text-suave">Leads que chegaram até cada etapa · % sobre a etapa anterior</p>
+          <p className="mb-5 text-xs text-suave">
+            Leads que chegaram até cada etapa · % sobre a etapa anterior; a primeira é a base
+          </p>
           {f.degraus.map((d, i) => (
             <div key={d.rotulo} className="mb-2 grid grid-cols-[10.5rem_1fr_4.5rem] items-center gap-3 text-sm">
               <span className="text-suave">{d.rotulo}</span>
@@ -68,7 +70,7 @@ export default async function VisaoGeral() {
               </div>
               <span className="text-right tabular-nums">
                 <span className="text-white">{d.n}</span>
-                {d.conversao !== null && <span className="ml-1.5 text-xs text-suave">{d.conversao}%</span>}
+                <span className="ml-1.5 text-xs text-suave">{d.conversao}%</span>
               </span>
             </div>
           ))}
